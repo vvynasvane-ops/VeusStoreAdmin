@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vvynas Vane APKs — Admin</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23150028'/%3E%3Ccircle cx='32' cy='32' r='28' fill='%23220040'/%3E%3Cellipse cx='32' cy='36' rx='18' ry='14' fill='%23c084fc'/%3E%3Ccircle cx='25' cy='30' r='5' fill='%23150028'/%3E%3Ccircle cx='39' cy='30' r='5' fill='%23150028'/%3E%3Ccircle cx='26' cy='29' r='2' fill='%23facc15'/%3E%3Ccircle cx='40' cy='29' r='2' fill='%23facc15'/%3E%3Cellipse cx='32' cy='40' rx='6' ry='4' fill='%23150028' opacity='0.4'/%3E%3Ccircle cx='32' cy='40' r='2' fill='%23facc15' opacity='0.8'/%3E%3Cellipse cx='18' cy='22' rx='4' ry='7' fill='%23c084fc' transform='rotate(-20 18 22)'/%3E%3Cellipse cx='46' cy='22' rx='4' ry='7' fill='%23c084fc' transform='rotate(20 46 22)'/%3E%3Cpath d='M26 44 Q32 50 38 44' stroke='%23facc15' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<!-- Firebase v9 compat (CDN — no build step needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<style>
+  :root {
+    --purple-deep: #150028;
+    --purple-mid: #3b0070;
+    --purple-bright: #9333ea;
+    --purple-light: #c084fc;
+    --purple-glow: #a855f7;
+    --yellow: #facc15;
+    --yellow-dark: #eab308;
+    --white: #f8f8ff;
+    --black: #050008;
+    --card-bg: rgba(30, 0, 55, 0.75);
+    --card-border: rgba(147, 51, 234, 0.35);
+    --text-primary: #f8f8ff;
+    --text-secondary: #c084fc;
+    --text-muted: #8b5cf6;
+    --bg-primary: #0a0015;
+    --bg-secondary: #120020;
+    --bg-card: rgba(30, 0, 55, 0.75);
+    --navbar-bg: rgba(10, 0, 21, 0.92);
+    --input-bg: rgba(20, 0, 40, 0.8);
+    --shadow-glow: 0 0 20px rgba(147, 51, 234, 0.4);
+    --shadow-yellow: 0 0 15px rgba(250, 204, 21, 0.3);
+    --user-bg-image: none;
+    --user-bg-color: #0a0015;
+  }
+
+  [data-theme="light"] {
+    --purple-deep: #f3e8ff;
+    --purple-mid: #e9d5ff;
+    --purple-bright: #9333ea;
+    --purple-light: #7c3aed;
+    --purple-glow: #a855f7;
+    --yellow: #d97706;
+    --yellow-dark: #b45309;
+    --white: #1a0030;
+    --black: #faf5ff;
+    --card-bg: rgba(243, 232, 255, 0.85);
+    --card-border: rgba(147, 51, 234, 0.25);
+    --text-primary: #1a0030;
+    --text-secondary: #6d28d9;
+    --text-muted: #9333ea;
+    --bg-primary: #faf5ff;
+    --bg-secondary: #f3e8ff;
+    --bg-card: rgba(243, 232, 255, 0.85);
+    --navbar-bg: rgba(250, 245, 255, 0.95);
+    --input-bg: rgba(233, 213, 255, 0.6);
+    --shadow-glow: 0 0 20px rgba(147, 51, 234, 0.2);
+    --shadow-yellow: 0 0 15px rgba(217, 119, 6, 0.2);
+    --user-bg-color: #faf5ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Exo 2', sans-serif;
+    background-color: var(--user-bg-color, var(--bg-primary));
+    background-image: var(--user-bg-image, none);
+    background-size: cover;
+    background-attachment: fixed;
+    background-position: center;
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background 0.4s, color 0.4s;
+  }
+
+  #starfield { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
+  .star { position: absolute; border-radius: 50%; background: white; animation: twinkle linear infinite; }
+  @keyframes twinkle { 0%, 100% { opacity: 0.1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(1.3); } }
+
+  body::before {
+    content: '';
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 1;
+  }
+
+  /* ── SYNC STATUS BAR ── */
+  #syncBar {
+    position: fixed; top: 70px; left: 0; right: 0;
+    z-index: 900; text-align: center;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 2px; padding: 5px 16px;
+    transition: all 0.4s;
+    transform: translateY(-100%); opacity: 0;
+    pointer-events: none;
+  }
+  #syncBar.show { transform: translateY(0); opacity: 1; }
+  #syncBar.connected { background: rgba(34,197,94,0.15); color: #22c55e; border-bottom: 1px solid rgba(34,197,94,0.3); }
+  #syncBar.error { background: rgba(239,68,68,0.15); color: #ef4444; border-bottom: 1px solid rgba(239,68,68,0.3); }
+  #syncBar.syncing { background: rgba(147,51,234,0.15); color: var(--purple-light); border-bottom: 1px solid var(--card-border); }
+
+  .navbar {
+    position: fixed; top: 0; width: 100%; z-index: 1000;
+    background: var(--navbar-bg);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--card-border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 70px;
+    box-shadow: 0 2px 30px rgba(147,51,234,0.15);
+  }
+
+  .nav-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; }
+  .logo-svg { width: 48px; height: 48px; filter: drop-shadow(0 0 8px rgba(147,51,234,0.7)); }
+  .brand-text { display: flex; flex-direction: column; }
+  .brand-name { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: 900; color: var(--text-primary); letter-spacing: 1px; line-height: 1; text-shadow: 0 0 10px var(--purple-glow); }
+  .brand-sub { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--yellow); letter-spacing: 3px; text-transform: uppercase; }
+
+  .nav-center { display: flex; align-items: center; gap: 6px; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 30px; padding: 6px 16px; flex: 1; max-width: 380px; margin: 0 2rem; }
+  .nav-center input { background: none; border: none; outline: none; color: var(--text-primary); font-family: 'Exo 2', sans-serif; font-size: 0.9rem; width: 100%; }
+  .nav-center input::placeholder { color: var(--text-muted); }
+  .search-icon { color: var(--purple-light); font-size: 1rem; }
+
+  .nav-actions { display: flex; align-items: center; gap: 10px; }
+  .nav-btn { background: none; border: 1px solid var(--card-border); color: var(--text-secondary); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; letter-spacing: 1px; transition: all 0.25s; white-space: nowrap; }
+  .nav-btn:hover { background: var(--card-bg); color: var(--yellow); border-color: var(--yellow); }
+  .nav-btn.active { background: var(--purple-bright); color: white; border-color: var(--purple-bright); }
+
+  .hero { position: relative; z-index: 2; padding: 120px 2rem 60px; text-align: center; background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(147,51,234,0.15) 0%, transparent 70%); }
+  .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(147,51,234,0.15); border: 1px solid rgba(147,51,234,0.4); border-radius: 20px; padding: 5px 16px; margin-bottom: 20px; font-family: 'Share Tech Mono', monospace; font-size: 0.72rem; color: var(--yellow); letter-spacing: 2px; text-transform: uppercase; }
+  .hero-badge::before { content: '◆'; color: var(--purple-light); }
+  .hero-title { font-family: 'Orbitron', monospace; font-size: clamp(2rem, 5vw, 3.8rem); font-weight: 900; color: var(--text-primary); line-height: 1.1; text-shadow: 0 0 30px rgba(147,51,234,0.5); margin-bottom: 12px; }
+  .hero-title span { color: var(--yellow); }
+  .hero-sub { font-size: 1rem; color: var(--text-secondary); max-width: 500px; margin: 0 auto 30px; font-weight: 300; letter-spacing: 0.5px; }
+  .hero-stats { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-num { font-family: 'Orbitron', monospace; font-size: 1.8rem; font-weight: 700; color: var(--yellow); text-shadow: var(--shadow-yellow); }
+  .stat-label { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+
+  main { position: relative; z-index: 2; padding: 0 2rem 4rem; max-width: 1300px; margin: 0 auto; }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; }
+  .toolbar-left { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn { background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-secondary); border-radius: 20px; padding: 6px 16px; cursor: pointer; font-family: 'Exo 2', sans-serif; font-size: 0.82rem; transition: all 0.2s; }
+  .filter-btn.active, .filter-btn:hover { background: var(--purple-bright); color: white; border-color: var(--purple-bright); box-shadow: 0 0 12px rgba(147,51,234,0.4); }
+
+  .section-title { font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: 10px; }
+  .section-title::before { content: '▶'; color: var(--yellow); font-size: 0.7rem; }
+
+  #app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-bottom: 40px; }
+
+  .app-card { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; transition: all 0.3s; cursor: pointer; backdrop-filter: blur(12px); position: relative; animation: cardIn 0.5s ease both; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .app-card::before { content: ''; position: absolute; inset: 0; border-radius: 16px; background: linear-gradient(135deg, rgba(147,51,234,0.08), transparent 60%); pointer-events: none; }
+  .app-card:hover { transform: translateY(-6px) scale(1.01); border-color: var(--purple-glow); box-shadow: var(--shadow-glow), 0 10px 40px rgba(0,0,0,0.3); }
+
+  .card-banner { height: 100px; background: linear-gradient(135deg, var(--purple-mid), var(--purple-deep)); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  .card-banner::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 70% 30%, rgba(250,204,21,0.12), transparent 60%); }
+  .card-banner-icon { font-size: 2.5rem; filter: drop-shadow(0 0 8px rgba(250,204,21,0.5)); z-index: 1; }
+
+  .card-body { padding: 16px; }
+  .app-icon-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+  .app-icon { width: 54px; height: 54px; border-radius: 14px; border: 2px solid var(--card-border); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; background: linear-gradient(135deg, var(--purple-deep), var(--purple-mid)); flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+  .app-meta { flex: 1; min-width: 0; }
+  .app-name { font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-dev { font-size: 0.75rem; color: var(--yellow); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; }
+  .app-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .app-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tag { background: rgba(147,51,234,0.15); border: 1px solid rgba(147,51,234,0.3); color: var(--purple-light); border-radius: 4px; padding: 2px 8px; font-size: 0.68rem; letter-spacing: 1px; font-family: 'Share Tech Mono', monospace; }
+
+  .card-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--card-border); padding-top: 10px; }
+  .app-size { font-size: 0.72rem; color: var(--text-muted); font-family: 'Share Tech Mono', monospace; }
+  .app-version { font-size: 0.7rem; color: var(--yellow-dark); font-family: 'Share Tech Mono', monospace; }
+  .download-btn { display: flex; align-items: center; gap: 6px; background: linear-gradient(135deg, var(--purple-bright), #7c3aed); color: white; border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; transition: all 0.25s; box-shadow: 0 4px 12px rgba(147,51,234,0.4); }
+  .download-btn:hover { background: linear-gradient(135deg, var(--yellow), #d97706); box-shadow: var(--shadow-yellow); transform: scale(1.04); }
+
+  /* Loading skeleton */
+  .skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .skeleton-card { background: var(--bg-card); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; height: 280px; }
+  .skeleton-banner { height: 100px; background: linear-gradient(90deg, var(--card-bg) 25%, rgba(147,51,234,0.15) 50%, var(--card-bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  .skeleton-body { padding: 16px; }
+  .skeleton-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--card-bg) 25%, rgba(147,51,234,0.15) 50%, var(--card-bg) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; margin-bottom: 10px; }
+  .skeleton-line.short { width: 60%; }
+  .skeleton-line.medium { width: 80%; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .empty-state { text-align: center; padding: 80px 20px; display: none; }
+  .empty-state.show { display: block; }
+  .empty-icon { font-size: 4rem; margin-bottom: 16px; filter: grayscale(0.4); }
+  .empty-title { font-family: 'Orbitron', monospace; font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 8px; }
+  .empty-sub { font-size: 0.85rem; color: var(--text-muted); }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(5,0,8,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg-secondary); border: 1px solid var(--card-border); border-radius: 20px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; box-shadow: 0 0 60px rgba(147,51,234,0.3); animation: modalIn 0.3s ease; position: relative; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.92) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-header { padding: 24px 24px 0; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 16px; }
+  .modal-title { font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+  .modal-close { background: rgba(147,51,234,0.15); border: 1px solid var(--card-border); color: var(--text-secondary); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+  .modal-close:hover { background: var(--purple-bright); color: white; }
+  .modal-body { padding: 24px; }
+
+  .form-group { margin-bottom: 18px; }
+  .form-label { display: block; font-family: 'Share Tech Mono', monospace; font-size: 0.72rem; color: var(--yellow); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+  .form-input, .form-textarea, .form-select { width: 100%; background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-primary); border-radius: 10px; padding: 10px 14px; font-family: 'Exo 2', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+  .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--purple-glow); box-shadow: 0 0 0 3px rgba(147,51,234,0.15); }
+  .form-textarea { min-height: 80px; resize: vertical; }
+  .form-select option { background: var(--bg-secondary); }
+
+  .emoji-picker { display: flex; flex-wrap: wrap; gap: 8px; }
+  .emoji-opt { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; border: 2px solid transparent; background: var(--input-bg); transition: all 0.2s; }
+  .emoji-opt:hover { border-color: var(--purple-glow); transform: scale(1.1); }
+  .emoji-opt.selected { border-color: var(--yellow); box-shadow: var(--shadow-yellow); }
+
+  .btn-primary { background: linear-gradient(135deg, var(--purple-bright), #7c3aed); color: white; border: none; border-radius: 10px; padding: 12px 24px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 0.82rem; font-weight: 700; letter-spacing: 1px; transition: all 0.25s; width: 100%; box-shadow: 0 4px 20px rgba(147,51,234,0.4); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(147,51,234,0.5); }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .btn-danger { background: linear-gradient(135deg, #dc2626, #991b1b); color: white; border: none; border-radius: 10px; padding: 10px 20px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 0.78rem; font-weight: 700; letter-spacing: 1px; transition: all 0.25s; }
+  .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(220,38,38,0.4); }
+
+  .settings-panel { position: fixed; right: -360px; top: 0; height: 100vh; width: 340px; background: var(--bg-secondary); border-left: 1px solid var(--card-border); z-index: 1500; transition: right 0.35s cubic-bezier(.4,0,.2,1); overflow-y: auto; backdrop-filter: blur(20px); box-shadow: -10px 0 40px rgba(0,0,0,0.4); }
+  .settings-panel.open { right: 0; }
+  .settings-header { padding: 24px; border-bottom: 1px solid var(--card-border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg-secondary); z-index: 1; }
+  .settings-title { font-family: 'Orbitron', monospace; font-size: 0.9rem; font-weight: 700; color: var(--yellow); }
+  .settings-body { padding: 20px; }
+  .setting-section { margin-bottom: 24px; }
+  .setting-label { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; display: block; }
+  .theme-toggle { display: flex; border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden; }
+  .theme-opt { flex: 1; padding: 10px; text-align: center; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--text-muted); transition: all 0.2s; background: transparent; border: none; color: var(--text-secondary); }
+  .theme-opt.active { background: var(--purple-bright); color: white; }
+  .color-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch { width: 34px; height: 34px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; position: relative; }
+  .swatch:hover, .swatch.active { border-color: var(--yellow); transform: scale(1.12); }
+  .bg-img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .bg-img-opt { height: 60px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; overflow: hidden; background-size: cover; background-position: center; transition: all 0.2s; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: white; text-shadow: 0 1px 4px rgba(0,0,0,0.8); font-family: 'Share Tech Mono', monospace; letter-spacing: 1px; }
+  .bg-img-opt:hover, .bg-img-opt.active { border-color: var(--yellow); transform: scale(1.03); }
+  .file-upload-btn { width: 100%; padding: 10px; background: var(--input-bg); border: 1px dashed var(--card-border); border-radius: 8px; color: var(--text-secondary); font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; cursor: pointer; text-align: center; transition: all 0.2s; }
+  .file-upload-btn:hover { border-color: var(--purple-glow); color: var(--purple-light); }
+
+  .detail-banner { height: 140px; background: linear-gradient(135deg, var(--purple-deep), var(--purple-mid), #1a0040); display: flex; align-items: center; justify-content: center; font-size: 4rem; border-radius: 20px 20px 0 0; position: relative; overflow: hidden; }
+  .detail-banner::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 70% 30%, rgba(250,204,21,0.15), transparent 60%); }
+  .detail-icon { width: 70px; height: 70px; border-radius: 18px; border: 3px solid var(--yellow); display: flex; align-items: center; justify-content: center; font-size: 2rem; background: linear-gradient(135deg, var(--purple-deep), var(--purple-mid)); margin-right: 16px; flex-shrink: 0; box-shadow: 0 0 20px rgba(250,204,21,0.3); }
+  .detail-info { display: flex; align-items: center; padding: 0 24px 20px; margin-top: 16px; }
+  .detail-name { font-family: 'Orbitron', monospace; font-size: 1.3rem; font-weight: 900; color: var(--text-primary); margin-bottom: 4px; }
+  .detail-dev { font-family: 'Share Tech Mono', monospace; font-size: 0.78rem; color: var(--yellow); }
+  .detail-stats { display: flex; gap: 20px; padding: 0 24px 16px; border-bottom: 1px solid var(--card-border); flex-wrap: wrap; }
+  .detail-stat { text-align: center; }
+  .detail-stat-val { font-family: 'Orbitron', monospace; font-size: 1rem; font-weight: 700; color: var(--purple-light); }
+  .detail-stat-key { font-size: 0.65rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
+
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--purple-bright); color: white; padding: 12px 24px; border-radius: 10px; font-family: 'Orbitron', monospace; font-size: 0.8rem; z-index: 3000; opacity: 0; transition: opacity 0.3s; box-shadow: 0 4px 20px rgba(147,51,234,0.5); pointer-events: none; }
+  #toast.show { opacity: 1; }
+  #toast.yellow { background: linear-gradient(135deg, var(--yellow), #d97706); color: #1a0030; }
+
+  .fab { position: fixed; bottom: 30px; right: 30px; z-index: 900; background: linear-gradient(135deg, var(--purple-bright), #7c3aed); border: none; border-radius: 50%; width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 24px rgba(147,51,234,0.5); font-size: 1.5rem; color: white; transition: all 0.3s; }
+  .fab:hover { transform: scale(1.1) rotate(10deg); box-shadow: 0 10px 30px rgba(147,51,234,0.7); }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-primary); }
+  ::-webkit-scrollbar-thumb { background: var(--purple-mid); border-radius: 3px; }
+
+  @media (max-width: 640px) {
+    .navbar { padding: 0 1rem; }
+    .nav-center { display: none; }
+    .hero { padding: 90px 1rem 40px; }
+    main { padding: 0 1rem 4rem; }
+    #app-grid { grid-template-columns: 1fr; }
+  }
+
+  .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1400; display: none; }
+  .settings-overlay.open { display: block; }
+  input[type="file"] { display: none; }
+  input[type="color"] { -webkit-appearance: none; width: 34px; height: 34px; border: 2px solid var(--card-border); border-radius: 8px; cursor: pointer; padding: 2px; background: var(--input-bg); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  .admin-modal-inner { max-width: 420px; }
+  .otp-input-row { display: flex; gap: 10px; }
+  .otp-input-row .form-input { flex: 1; letter-spacing: 6px; font-family: 'Orbitron', monospace; font-size: 1.1rem; text-align: center; }
+  .otp-send-btn { background: linear-gradient(135deg, var(--purple-bright), #7c3aed); color: white; border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; transition: all 0.25s; white-space: nowrap; box-shadow: 0 4px 12px rgba(147,51,234,0.4); }
+  .otp-send-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(147,51,234,0.5); }
+  .otp-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .admin-status-dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; display: inline-block; margin-right: 6px; box-shadow: 0 0 8px rgba(239,68,68,0.6); transition: background 0.3s, box-shadow 0.3s; }
+  .admin-status-dot.online { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.6); }
+  .otp-info { font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; letter-spacing: 0.5px; }
+  .admin-badge { display: inline-flex; align-items: center; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); border-radius: 6px; padding: 3px 10px; font-family: 'Share Tech Mono', monospace; font-size: 0.7rem; color: #22c55e; letter-spacing: 1px; }
+
+  /* Firebase setup notice */
+  .setup-notice {
+    background: rgba(250,204,21,0.1); border: 1px solid rgba(250,204,21,0.4);
+    border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;
+    font-family: 'Share Tech Mono', monospace; font-size: 0.75rem;
+    color: var(--yellow); line-height: 1.7; letter-spacing: 0.5px;
+  }
+  .setup-notice strong { display: block; margin-bottom: 8px; font-size: 0.8rem; }
+  .setup-notice code { background: rgba(0,0,0,0.3); padding: 1px 6px; border-radius: 4px; font-size: 0.7rem; }
+
+  /* ── PAYWALL / SUPPORT AD ── */
+  .paywall-icon-wrap { text-align: center; padding: 6px 0 14px; }
+  .paywall-icon-wrap span { font-size: 3rem; filter: drop-shadow(0 0 10px rgba(250,204,21,0.5)); }
+  .copy-field-row { display: flex; gap: 8px; }
+  .copy-field-row .form-input { flex: 1; }
+  .copy-field-row .otp-send-btn { padding: 10px 14px; }
+  .paywall-note { text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 0.68rem; color: var(--text-muted); letter-spacing: 1px; margin-top: 14px; }
+
+  /* Admin: enable/disable toggle + section styling for paywall editor */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; }
+  .toggle-row span { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; color: var(--text-secondary); letter-spacing: 1px; }
+  .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch-slider { position: absolute; cursor: pointer; inset: 0; background: rgba(139,92,246,0.25); border: 1px solid var(--card-border); border-radius: 24px; transition: all 0.25s; }
+  .switch-slider::before { content: ''; position: absolute; height: 18px; width: 18px; left: 2px; top: 2px; background: var(--text-secondary); border-radius: 50%; transition: all 0.25s; }
+  .switch input:checked + .switch-slider { background: linear-gradient(135deg, var(--purple-bright), #7c3aed); border-color: var(--purple-bright); }
+  .switch input:checked + .switch-slider::before { transform: translateX(20px); background: var(--yellow); }
+  .admin-section-divider { border: none; border-top: 1px solid var(--card-border); margin: 22px 0; }
+  .admin-subtitle { font-family: 'Orbitron', monospace; font-size: 0.78rem; font-weight: 700; color: var(--yellow); letter-spacing: 1.5px; margin-bottom: 14px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div id="starfield"></div>
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+
+<!-- Sync Status Bar -->
+<div id="syncBar">● CONNECTING TO DATABASE…</div>
+
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <a class="nav-brand" href="#">
+    <svg class="logo-svg" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="40" cy="40" r="38" fill="#150028" stroke="#9333ea" stroke-width="1.5" opacity="0.8"/>
+      <ellipse cx="40" cy="44" rx="24" ry="20" fill="#c084fc"/>
+      <ellipse cx="40" cy="52" rx="12" ry="8" fill="#e9d5ff"/>
+      <circle cx="30" cy="38" r="7" fill="#150028"/>
+      <circle cx="50" cy="38" r="7" fill="#150028"/>
+      <circle cx="31" cy="37" r="3.5" fill="#facc15"/>
+      <circle cx="51" cy="37" r="3.5" fill="#facc15"/>
+      <circle cx="31.8" cy="36.2" r="1.2" fill="white" opacity="0.9"/>
+      <circle cx="51.8" cy="36.2" r="1.2" fill="white" opacity="0.9"/>
+      <ellipse cx="37" cy="50" rx="2" ry="1.5" fill="#9333ea" opacity="0.7"/>
+      <ellipse cx="43" cy="50" rx="2" ry="1.5" fill="#9333ea" opacity="0.7"/>
+      <ellipse cx="17" cy="30" rx="5" ry="9" fill="#c084fc" transform="rotate(-15 17 30)"/>
+      <ellipse cx="63" cy="30" rx="5" ry="9" fill="#c084fc" transform="rotate(15 63 30)"/>
+      <ellipse cx="17" cy="30" rx="3" ry="6" fill="#e9d5ff" opacity="0.5" transform="rotate(-15 17 30)"/>
+      <ellipse cx="63" cy="30" rx="3" ry="6" fill="#e9d5ff" opacity="0.5" transform="rotate(15 63 30)"/>
+      <path d="M34 56 Q40 62 46 56" stroke="#9333ea" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="40" cy="16" r="3" fill="#facc15" opacity="0.9"/>
+      <circle cx="32" cy="18" r="2" fill="#facc15" opacity="0.6"/>
+      <circle cx="48" cy="18" r="2" fill="#facc15" opacity="0.6"/>
+    </svg>
+    <div class="brand-text">
+      <span class="brand-name">VVYNAS VANE</span>
+      <span class="brand-sub">APK Store · Admin</span>
+    </div>
+  </a>
+
+  <div class="nav-center">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search apps…" oninput="filterApps()">
+  </div>
+
+  <div class="nav-actions">
+    <button class="nav-btn" onclick="openAddModal()">＋ Add App</button>
+    <button class="nav-btn" id="adminNavBtn" onclick="openAdminModal()"><span class="admin-status-dot" id="adminDot"></span>Admin</button>
+    <button class="nav-btn" onclick="openSettings()">⚙ Theme</button>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-badge">Vvynas Vane · APK Distribution Hub</div>
+  <h1 class="hero-title">Your Personal<br><span>App Universe</span></h1>
+  <p class="hero-sub">Curated Android APKs — download, explore, and stay updated with the latest builds.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num" id="totalApps">—</div><div class="stat-label">Apps Listed</div></div>
+    <div class="stat"><div class="stat-num" id="totalCats">—</div><div class="stat-label">Categories</div></div>
+    <div class="stat"><div class="stat-num">∞</div><div class="stat-label">Free Downloads</div></div>
+  </div>
+</section>
+
+<!-- ── MAIN ── -->
+<main>
+  <div class="toolbar">
+    <div class="toolbar-left" id="categoryFilters">
+      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+    </div>
+  </div>
+  <div class="section-title">Featured Applications</div>
+  <div id="app-grid">
+    <!-- Skeleton loaders -->
+    <div class="skeleton-card"><div class="skeleton-banner"></div><div class="skeleton-body"><div class="skeleton-line medium"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
+    <div class="skeleton-card"><div class="skeleton-banner"></div><div class="skeleton-body"><div class="skeleton-line medium"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
+    <div class="skeleton-card"><div class="skeleton-banner"></div><div class="skeleton-body"><div class="skeleton-line medium"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
+  </div>
+  <div class="empty-state" id="emptyState">
+    <div class="empty-icon">🚀</div>
+    <div class="empty-title">No apps yet</div>
+    <div class="empty-sub">Click "＋ Add App" to upload your first APK</div>
+  </div>
+</main>
+
+<!-- ── ADD APP MODAL ── -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">⬆ UPLOAD NEW APP</span>
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">App Name</label>
+        <input class="form-input" id="appName" type="text" placeholder="e.g. SuperLauncher Pro">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Developer</label>
+          <input class="form-input" id="appDev" type="text" placeholder="Vvynas Vane">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Version</label>
+          <input class="form-input" id="appVersion" type="text" placeholder="v1.0.0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">File Size</label>
+          <input class="form-input" id="appSize" type="text" placeholder="e.g. 24.5 MB">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <input class="form-input" id="appCategory" type="text" placeholder="e.g. Tools, Games…">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" id="appDesc" placeholder="What does this app do?"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tags (comma-separated)</label>
+        <input class="form-input" id="appTags" type="text" placeholder="e.g. productivity, offline, free">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Download Link / APK URL</label>
+        <input class="form-input" id="appUrl" type="text" placeholder="https://…/app.apk">
+      </div>
+      <div class="form-group">
+        <label class="form-label">App Icon (choose emoji)</label>
+        <div class="emoji-picker" id="emojiPicker"></div>
+      </div>
+      <button class="btn-primary" id="publishBtn" onclick="saveApp()">⬆ PUBLISH APP</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP DETAIL MODAL ── -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal" style="max-width:620px;">
+    <div class="detail-banner" id="detailBanner">
+      <span id="detailBannerIcon" style="font-size:4rem;z-index:1;"></span>
+    </div>
+    <div class="detail-info">
+      <div class="detail-icon" id="detailIcon"></div>
+      <div>
+        <div class="detail-name" id="detailName"></div>
+        <div class="detail-dev" id="detailDev"></div>
+      </div>
+    </div>
+    <div class="detail-stats">
+      <div class="detail-stat"><div class="detail-stat-val" id="detailVersion"></div><div class="detail-stat-key">Version</div></div>
+      <div class="detail-stat"><div class="detail-stat-val" id="detailSize"></div><div class="detail-stat-key">Size</div></div>
+      <div class="detail-stat"><div class="detail-stat-val" id="detailCat"></div><div class="detail-stat-key">Category</div></div>
+    </div>
+    <div class="modal-body">
+      <div class="section-title" style="font-size:0.75rem;">About</div>
+      <p id="detailDesc" style="color:var(--text-secondary);font-size:0.88rem;line-height:1.7;margin-bottom:18px;"></p>
+      <div class="app-tags" id="detailTags"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
+        <button class="btn-primary" id="detailDownloadBtn" onclick="doDownload()" style="width:auto;flex:1;">⬇ DOWNLOAD APK</button>
+        <button class="btn-danger" id="detailDeleteBtn" onclick="deleteCurrentApp()" style="display:none;">🗑 DELETE</button>
+        <button class="modal-close" onclick="closeDetailModal()" style="width:auto;padding:10px 16px;background:var(--input-bg);border-radius:10px;">✕</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ADMIN LOGIN MODAL ── -->
+<div class="modal-overlay" id="adminModal">
+  <div class="modal admin-modal-inner">
+    <div class="modal-header">
+      <span class="modal-title">🔐 ADMIN ACCESS</span>
+      <button class="modal-close" onclick="closeAdminModal()">✕</button>
+    </div>
+    <div class="modal-body" id="adminModalBody"></div>
+  </div>
+</div>
+
+<!-- ── SUPPORT / PAYWALL MODAL (shown to everyone incl. admin, on load) ── -->
+<div class="modal-overlay" id="paywallModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <span class="modal-title" id="paywallTitle">💛 SUPPORT VVYNAS VANE</span>
+      <button class="modal-close" onclick="closePaywallModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="paywall-icon-wrap"><span>💜</span></div>
+      <p id="paywallMessage" style="color:var(--text-secondary);font-size:0.88rem;line-height:1.75;text-align:center;margin-bottom:20px;"></p>
+
+      <div class="form-group" id="paywallMpesaGroup" style="display:none;">
+        <label class="form-label">📱 M-Pesa Number</label>
+        <div class="copy-field-row">
+          <input class="form-input" id="paywallMpesaInput" readonly>
+          <button class="otp-send-btn" onclick="copyPaywallField('paywallMpesaInput')">📋 Copy</button>
+        </div>
+      </div>
+      <div class="form-group" id="paywallPaypalGroup" style="display:none;">
+        <label class="form-label">💳 PayPal</label>
+        <div class="copy-field-row">
+          <input class="form-input" id="paywallPaypalInput" readonly>
+          <button class="otp-send-btn" onclick="copyPaywallField('paywallPaypalInput')">📋 Copy</button>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="closePaywallModal()" style="margin-top:6px;">Continue to App</button>
+      <div class="paywall-note">Vvynas Vane will always remain free to use</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SETTINGS PANEL ── -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-header">
+    <span class="settings-title">⚙ APPEARANCE</span>
+    <button class="modal-close" onclick="closeSettings()">✕</button>
+  </div>
+  <div class="settings-body">
+    <div class="setting-section">
+      <span class="setting-label">🌗 Mode</span>
+      <div class="theme-toggle">
+        <button class="theme-opt active" id="darkBtn" onclick="setTheme('dark')">🌙 Dark</button>
+        <button class="theme-opt" id="lightBtn" onclick="setTheme('light')">☀️ Light</button>
+      </div>
+    </div>
+    <div class="setting-section">
+      <span class="setting-label">🎨 Background Color</span>
+      <div class="color-swatches" id="colorSwatches">
+        <div class="swatch active" style="background:#0a0015;" onclick="setBgColor('#0a0015', this)" title="Void"></div>
+        <div class="swatch" style="background:#000814;" onclick="setBgColor('#000814', this)" title="Deep Space"></div>
+        <div class="swatch" style="background:#001a00;" onclick="setBgColor('#001a00', this)" title="Matrix"></div>
+        <div class="swatch" style="background:#1a0000;" onclick="setBgColor('#1a0000', this)" title="Crimson"></div>
+        <div class="swatch" style="background:#001422;" onclick="setBgColor('#001422', this)" title="Ocean"></div>
+        <div class="swatch" style="background:#1a1400;" onclick="setBgColor('#1a1400', this)" title="Gold"></div>
+        <div class="swatch" style="background:#0d0d0d;" onclick="setBgColor('#0d0d0d', this)" title="Onyx"></div>
+        <div class="swatch" style="background:linear-gradient(135deg,#0a0015,#001422);" onclick="setBgColor('linear', this)" title="Purple Ocean"></div>
+        <input type="color" id="customColor" title="Custom color" onchange="setBgColor(this.value, null)">
+      </div>
+    </div>
+    <div class="setting-section">
+      <span class="setting-label">🖼 Background Image</span>
+      <div class="bg-img-grid">
+        <div class="bg-img-opt" style="background-image:url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=400');background-color:#111;" onclick="setBgImage('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=800', this)">Galaxy</div>
+        <div class="bg-img-opt" style="background-image:url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400');background-color:#111;" onclick="setBgImage('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800', this)">Neon City</div>
+        <div class="bg-img-opt" style="background-image:url('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400');background-color:#111;" onclick="setBgImage('https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800', this)">Circuit</div>
+        <div class="bg-img-opt" style="background-image:url('https://images.unsplash.com/photo-1484589065579-248aad0d8b13?w=400');background-color:#111;" onclick="setBgImage('https://images.unsplash.com/photo-1484589065579-248aad0d8b13?w=800', this)">Stars</div>
+        <div class="bg-img-opt" style="background-image:url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400');background-color:#111;" onclick="setBgImage('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800', this)">Earth</div>
+        <div class="bg-img-opt active" style="background:#1a1a2e;" onclick="clearBgImage(this)">None ✕</div>
+      </div>
+      <div style="margin-top:8px;">
+        <label class="file-upload-btn" for="bgUpload">📂 Upload Custom Image</label>
+        <input type="file" id="bgUpload" accept="image/*" onchange="uploadBgImage(this)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<button class="fab" onclick="openAddModal()" title="Add New App">＋</button>
+
+<script>
+// ════════════════════════════════════════════════════
+//  FIREBASE CONFIG
+// ════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDGzpcAHboI2Ggj6g49jcf1x7so8J3F0qk",
+    authDomain: "vvynasapks.firebaseapp.com",
+    projectId: "vvynasapks",
+    storageBucket: "vvynasapks.firebasestorage.app",
+    messagingSenderId: "503135907630",
+    appId: "1:503135907630:web:173b8bca54968830d8d4bf",
+    measurementId: "G-37ZZNK561M"
+};
+
+// ════════════════════════════════════════════════════
+//  DETECT DEMO MODE (config not set yet)
+// ════════════════════════════════════════════════════
+const DEMO_MODE = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
+
+// ── STATE ──
+let apps = [];          // live-synced from Firebase
+let currentFilter = 'all';
+let selectedEmoji = '📱';
+let currentAppId = null;
+let currentDownloadUrl = '';
+let dbRef = null;
+let settingsRef = null;
+let isAdmin = false;
+let paywallInitialCheckDone = false;
+
+// Paywall / support-ad state (synced from Firebase settings/paywall, or localStorage in demo mode)
+let paywallSettings = {
+  enabled: false,
+  title: '💛 SUPPORT VVYNAS VANE',
+  message: 'If you enjoy using this app, consider sending a small tip to keep it alive and updated. Totally optional — the store stays free either way.',
+  mpesaNumber: '',
+  paypalAddress: ''
+};
+
+const EMOJIS = ['📱','🎮','🛠','🎵','📷','🌐','💬','📊','🔒','🚀','⚡','🎯','🌍','💡','🎨','📚','🏃','🎬','🛒','🔧','💎','🌟','🤖','🧩','📡','🎪','🔑','💰','🏆','🎭'];
+
+// ── ADMIN CONFIG ──
+const ADMIN_EMAIL      = 'simonmainamwangi2023@gmail.com';
+const EMAILJS_SERVICE_ID  = 'service_mgrwinh';
+const EMAILJS_TEMPLATE_ID = 'template_x1i7skk';
+const EMAILJS_PUBLIC_KEY  = 'lYSZa1-dirD6Yl8JA';
+
+let pendingOtp = null;
+let otpExpiry  = null;
+let otpCooldown = false;
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+function init() {
+  buildEmojiPicker();
+  buildStarfield();
+  loadSettings();
+
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  }
+
+  if (DEMO_MODE) {
+    // Run on localStorage so the page still works before Firebase is configured
+    showSyncBar('⚠ DEMO MODE — data is local only. Configure Firebase for cross-device sync.', 'error', 0);
+    apps = JSON.parse(localStorage.getItem('vvynas_apps') || '[]');
+    renderApps();
+    loadPaywallDemo();
+  } else {
+    initFirebase();
+  }
+}
+
+// ── STARFIELD ──
+function buildStarfield() {
+  const sf = document.getElementById('starfield');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    s.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-duration:${2+Math.random()*4}s;animation-delay:${Math.random()*4}s;opacity:${Math.random()*0.4+0.1};`;
+    sf.appendChild(s);
+  }
+}
+
+// ── EMOJI PICKER ──
+function buildEmojiPicker() {
+  const p = document.getElementById('emojiPicker');
+  p.innerHTML = EMOJIS.map(e => `<div class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}',this)">${e}</div>`).join('');
+}
+
+function selectEmoji(emoji, el) {
+  selectedEmoji = emoji;
+  document.querySelectorAll('.emoji-opt').forEach(x=>x.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ════════════════════════════════════════════════════
+//  FIREBASE — realtime listeners
+// ════════════════════════════════════════════════════
+function initFirebase() {
+  try {
+    const fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.database(fbApp);
+    dbRef = db.ref('apps');
+    settingsRef = db.ref('settings/paywall');
+
+    showSyncBar('⏳ CONNECTING…', 'syncing', 0);
+
+    // Connection state monitor
+    db.ref('.info/connected').on('value', snap => {
+      if (snap.val() === true) {
+        showSyncBar('● LIVE — all changes sync across devices', 'connected', 3000);
+      } else {
+        showSyncBar('○ OFFLINE — reconnecting…', 'error', 0);
+      }
+    });
+
+    // Real-time listener — fires on ANY change from ANY device
+    dbRef.on('value', snap => {
+      const data = snap.val();
+      if (data) {
+        // Firebase returns an object keyed by push-IDs; convert to sorted array
+        apps = Object.entries(data)
+          .map(([fbKey, app]) => ({ ...app, fbKey }))
+          .sort((a, b) => (b.added || '').localeCompare(a.added || ''));
+      } else {
+        apps = [];
+      }
+      renderApps();
+    }, err => {
+      console.error('Firebase read error:', err);
+      showSyncBar('❌ DATABASE ERROR — check Firebase rules', 'error', 0);
+    });
+
+    // Paywall / support-ad settings listener
+    settingsRef.on('value', snap => {
+      const data = snap.val();
+      if (data) paywallSettings = { ...paywallSettings, ...data };
+      // Reflect current values in the admin editor if it's open
+      populatePaywallAdminForm();
+      // Show the popup once per page load/launch — not on every live edit
+      if (!paywallInitialCheckDone) {
+        paywallInitialCheckDone = true;
+        maybeShowPaywall();
+      }
+    }, err => {
+      console.error('Firebase settings read error:', err);
+    });
+
+  } catch (err) {
+    console.error('Firebase init error:', err);
+    showSyncBar('❌ FIREBASE CONFIG ERROR — check your config', 'error', 0);
+  }
+}
+
+// ── SYNC BAR ──
+let syncBarTimer = null;
+function showSyncBar(msg, type, autohideMs) {
+  const bar = document.getElementById('syncBar');
+  bar.textContent = msg;
+  bar.className = `show ${type}`;
+  if (syncBarTimer) clearTimeout(syncBarTimer);
+  if (autohideMs > 0) {
+    syncBarTimer = setTimeout(() => { bar.classList.remove('show'); }, autohideMs);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════
+function renderApps() {
+  const grid = document.getElementById('app-grid');
+  const empty = document.getElementById('emptyState');
+  const search = document.getElementById('searchInput').value.toLowerCase();
+
+  let filtered = apps.filter(a => {
+    const matchCat = currentFilter === 'all' || a.category === currentFilter;
+    const matchSearch = !search || a.name.toLowerCase().includes(search) || (a.desc||'').toLowerCase().includes(search);
+    return matchCat && matchSearch;
+  });
+
+  grid.innerHTML = filtered.length
+    ? filtered.map((a, i) => appCard(a, i)).join('')
+    : '';
+
+  empty.classList.toggle('show', filtered.length === 0);
+
+  document.getElementById('totalApps').textContent = apps.length;
+  const cats = [...new Set(apps.map(a=>a.category).filter(Boolean))];
+  document.getElementById('totalCats').textContent = cats.length || 0;
+  rebuildFilters();
+}
+
+function appCard(a, i) {
+  const tags = (a.tags || '').split(',').map(t=>t.trim()).filter(Boolean);
+  const safeId = (a.id || a.fbKey || '').replace(/['"]/g, '');
+  return `
+  <div class="app-card" style="animation-delay:${i*0.06}s" onclick="openDetail('${safeId}')">
+    <div class="card-banner"><span class="card-banner-icon">${a.icon}</span></div>
+    <div class="card-body">
+      <div class="app-icon-row">
+        <div class="app-icon">${a.icon}</div>
+        <div class="app-meta">
+          <div class="app-name">${a.name}</div>
+          <div class="app-dev">${a.dev || 'Vvynas Vane'}</div>
+        </div>
+      </div>
+      <p class="app-desc">${a.desc || 'No description available.'}</p>
+      ${tags.length ? `<div class="app-tags">${tags.slice(0,3).map(t=>`<span class="tag">${t}</span>`).join('')}</div>` : ''}
+      <div class="card-footer">
+        <div>
+          <div class="app-size">${a.size || '—'}</div>
+          <div class="app-version">${a.version || 'v1.0'}</div>
+        </div>
+        <button class="download-btn" onclick="event.stopPropagation();downloadApp('${safeId}')">⬇ APK</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function rebuildFilters() {
+  const cats = ['all', ...new Set(apps.map(a=>a.category).filter(Boolean))];
+  const bar = document.getElementById('categoryFilters');
+  bar.innerHTML = cats.map(c=>`<button class="filter-btn${c===currentFilter?' active':''}" onclick="setFilter('${c}',this)">${c==='all'?'All':c}</button>`).join('');
+}
+
+function setFilter(cat, el) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderApps();
+}
+
+function filterApps() { renderApps(); }
+
+// ════════════════════════════════════════════════════
+//  ADD APP
+// ════════════════════════════════════════════════════
+function openAddModal() {
+  document.getElementById('addModal').classList.add('open');
+}
+function closeAddModal() {
+  document.getElementById('addModal').classList.remove('open');
+  clearForm();
+}
+function clearForm() {
+  ['appName','appDev','appVersion','appSize','appCategory','appDesc','appTags','appUrl'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  selectedEmoji = '📱';
+  buildEmojiPicker();
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = false;
+  btn.textContent = '⬆ PUBLISH APP';
+}
+
+async function saveApp() {
+  const name = document.getElementById('appName').value.trim();
+  if (!name) { showToast('App name is required!'); return; }
+
+  const app = {
+    id: 'app_' + Date.now(),
+    name,
+    dev:      document.getElementById('appDev').value.trim()      || 'Vvynas Vane',
+    version:  document.getElementById('appVersion').value.trim()  || 'v1.0',
+    size:     document.getElementById('appSize').value.trim()     || 'Unknown',
+    category: document.getElementById('appCategory').value.trim() || 'General',
+    desc:     document.getElementById('appDesc').value.trim()     || 'No description.',
+    tags:     document.getElementById('appTags').value.trim(),
+    url:      document.getElementById('appUrl').value.trim(),
+    icon:     selectedEmoji,
+    added:    new Date().toISOString()
+  };
+
+  const btn = document.getElementById('publishBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Publishing…';
+
+  if (DEMO_MODE) {
+    apps.unshift(app);
+    localStorage.setItem('vvynas_apps', JSON.stringify(apps));
+    renderApps();
+    closeAddModal();
+    showToast('✅ App published (demo mode)!', true);
+  } else {
+    try {
+      await dbRef.push(app);   // Firebase push → triggers real-time update on ALL devices
+      closeAddModal();
+      showToast('✅ App published — visible on all devices!', true);
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Failed to publish. Check connection.');
+      btn.disabled = false;
+      btn.textContent = '⬆ PUBLISH APP';
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  DETAIL MODAL
+// ════════════════════════════════════════════════════
+function findApp(id) {
+  return apps.find(x => x.id === id || x.fbKey === id);
+}
+
+function openDetail(id) {
+  const a = findApp(id);
+  if (!a) return;
+  currentAppId = id;
+  currentDownloadUrl = a.url;
+
+  document.getElementById('detailBannerIcon').textContent = a.icon;
+  document.getElementById('detailIcon').textContent = a.icon;
+  document.getElementById('detailName').textContent = a.name;
+  document.getElementById('detailDev').textContent = a.dev;
+  document.getElementById('detailVersion').textContent = a.version;
+  document.getElementById('detailSize').textContent = a.size;
+  document.getElementById('detailCat').textContent = a.category;
+  document.getElementById('detailDesc').textContent = a.desc;
+
+  const tags = (a.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+  document.getElementById('detailTags').innerHTML = tags.map(t=>`<span class="tag">${t}</span>`).join('');
+  document.getElementById('detailModal').classList.add('open');
+  document.getElementById('detailDeleteBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.remove('open');
+  currentAppId = null;
+}
+
+function doDownload() {
+  if (!currentDownloadUrl) { showToast('No download URL set for this app.'); return; }
+  window.open(currentDownloadUrl, '_blank');
+  showToast('⬇ Download started!', true);
+}
+
+function downloadApp(id) {
+  const a = findApp(id);
+  if (!a) return;
+  if (!a.url) { showToast('No APK link set.'); return; }
+  window.open(a.url, '_blank');
+  showToast('⬇ Downloading…', true);
+}
+
+async function deleteCurrentApp() {
+  if (!currentAppId) return;
+  if (!confirm('Delete this app from the store? This affects ALL devices.')) return;
+
+  if (DEMO_MODE) {
+    apps = apps.filter(a => a.id !== currentAppId && a.fbKey !== currentAppId);
+    localStorage.setItem('vvynas_apps', JSON.stringify(apps));
+    renderApps();
+    closeDetailModal();
+    showToast('🗑 App removed.');
+    return;
+  }
+
+  // Find the Firebase key
+  const a = findApp(currentAppId);
+  if (!a || !a.fbKey) { showToast('Cannot find app in database.'); return; }
+
+  try {
+    await dbRef.child(a.fbKey).remove();
+    closeDetailModal();
+    showToast('🗑 App deleted from all devices.', true);
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Delete failed. Check connection.');
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════════════════════
+function openSettings()  { document.getElementById('settingsPanel').classList.add('open'); document.getElementById('settingsOverlay').classList.add('open'); }
+function closeSettings() { document.getElementById('settingsPanel').classList.remove('open'); document.getElementById('settingsOverlay').classList.remove('open'); }
+
+function setTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode);
+  document.getElementById('darkBtn').classList.toggle('active', mode==='dark');
+  document.getElementById('lightBtn').classList.toggle('active', mode==='light');
+  localStorage.setItem('vvynas_theme', mode);
+}
+
+function setBgColor(color, el) {
+  if (color === 'linear') {
+    document.documentElement.style.setProperty('--user-bg-color', '#0a0015');
+    document.body.style.backgroundImage = 'linear-gradient(135deg,#0a0015,#001422)';
+    document.documentElement.style.setProperty('--user-bg-image', 'linear-gradient(135deg,#0a0015,#001422)');
+  } else {
+    document.documentElement.style.setProperty('--user-bg-color', color);
+    document.body.style.backgroundColor = color;
+    clearBgImageStyle();
+  }
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  localStorage.setItem('vvynas_bg_color', color);
+}
+
+function setBgImage(url, el) {
+  document.documentElement.style.setProperty('--user-bg-image', `url('${url}')`);
+  document.body.style.backgroundImage = `url('${url}')`;
+  document.body.style.backgroundSize = 'cover';
+  document.body.style.backgroundAttachment = 'fixed';
+  document.querySelectorAll('.bg-img-opt').forEach(x=>x.classList.remove('active'));
+  if (el) el.classList.add('active');
+  localStorage.setItem('vvynas_bg_img', url);
+}
+
+function clearBgImage(el) {
+  clearBgImageStyle();
+  document.querySelectorAll('.bg-img-opt').forEach(x=>x.classList.remove('active'));
+  if (el) el.classList.add('active');
+  localStorage.removeItem('vvynas_bg_img');
+}
+
+function clearBgImageStyle() {
+  document.documentElement.style.setProperty('--user-bg-image', 'none');
+  document.body.style.backgroundImage = 'none';
+}
+
+function uploadBgImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { setBgImage(e.target.result, null); showToast('🖼 Background updated!', true); };
+  reader.readAsDataURL(file);
+}
+
+function loadSettings() {
+  const theme = localStorage.getItem('vvynas_theme') || 'dark';
+  setTheme(theme);
+  const bgColor = localStorage.getItem('vvynas_bg_color');
+  if (bgColor) setBgColor(bgColor, null);
+  const bgImg = localStorage.getItem('vvynas_bg_img');
+  if (bgImg) setBgImage(bgImg, null);
+}
+
+// ════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════
+function showToast(msg, yellow=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (yellow ? ' yellow' : '');
+  setTimeout(()=>{ t.className = ''; }, 2800);
+}
+
+// ════════════════════════════════════════════════════
+//  PAYWALL / SUPPORT AD
+//  Shown on every page load/refresh when enabled.
+//  Editable live from the Admin panel — syncs to the
+//  public user file instantly via Firebase.
+// ════════════════════════════════════════════════════
+function loadPaywallDemo() {
+  const saved = localStorage.getItem('vvynas_paywall');
+  if (saved) {
+    try { paywallSettings = { ...paywallSettings, ...JSON.parse(saved) }; } catch(e) {}
+  }
+  populatePaywallAdminForm();
+  maybeShowPaywall();
+}
+
+function maybeShowPaywall() {
+  if (!paywallSettings.enabled) return;
+  if (!paywallSettings.message && !paywallSettings.mpesaNumber && !paywallSettings.paypalAddress) return;
+
+  document.getElementById('paywallTitle').textContent = paywallSettings.title || '💛 SUPPORT VVYNAS VANE';
+  document.getElementById('paywallMessage').textContent = paywallSettings.message || '';
+
+  const mpesaGroup = document.getElementById('paywallMpesaGroup');
+  if (paywallSettings.mpesaNumber) {
+    document.getElementById('paywallMpesaInput').value = paywallSettings.mpesaNumber;
+    mpesaGroup.style.display = 'block';
+  } else {
+    mpesaGroup.style.display = 'none';
+  }
+
+  const paypalGroup = document.getElementById('paywallPaypalGroup');
+  if (paywallSettings.paypalAddress) {
+    document.getElementById('paywallPaypalInput').value = paywallSettings.paypalAddress;
+    paypalGroup.style.display = 'block';
+  } else {
+    paypalGroup.style.display = 'none';
+  }
+
+  document.getElementById('paywallModal').classList.add('open');
+}
+
+function closePaywallModal() {
+  document.getElementById('paywallModal').classList.remove('open');
+}
+
+function copyPaywallField(inputId) {
+  const input = document.getElementById(inputId);
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value).then(() => {
+    showToast('📋 Copied to clipboard!', true);
+  }).catch(() => {
+    document.execCommand('copy');
+    showToast('📋 Copied to clipboard!', true);
+  });
+}
+
+// Fill the admin editor fields with the currently-synced settings
+function populatePaywallAdminForm() {
+  const enabledEl = document.getElementById('pwEnabled');
+  if (!enabledEl) return; // admin editor not open right now
+  enabledEl.checked = !!paywallSettings.enabled;
+  document.getElementById('pwTitle').value = paywallSettings.title || '';
+  document.getElementById('pwMessage').value = paywallSettings.message || '';
+  document.getElementById('pwMpesa').value = paywallSettings.mpesaNumber || '';
+  document.getElementById('pwPaypal').value = paywallSettings.paypalAddress || '';
+}
+
+async function savePaywallSettings() {
+  const updated = {
+    enabled: document.getElementById('pwEnabled').checked,
+    title: document.getElementById('pwTitle').value.trim() || '💛 SUPPORT VVYNAS VANE',
+    message: document.getElementById('pwMessage').value.trim(),
+    mpesaNumber: document.getElementById('pwMpesa').value.trim(),
+    paypalAddress: document.getElementById('pwPaypal').value.trim()
+  };
+
+  const btn = document.getElementById('pwSaveBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+  paywallSettings = { ...paywallSettings, ...updated };
+
+  if (DEMO_MODE) {
+    localStorage.setItem('vvynas_paywall', JSON.stringify(paywallSettings));
+    showToast('✅ Support ad settings saved!', true);
+    if (btn) { btn.disabled = false; btn.textContent = '💾 SAVE SUPPORT AD'; }
+    return;
+  }
+
+  try {
+    await settingsRef.set(paywallSettings);
+    showToast('✅ Support ad saved — synced to all devices!', true);
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Failed to save. Check connection.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 SAVE SUPPORT AD'; }
+  }
+}
+
+function previewPaywall() {
+  maybeShowPaywall();
+}
+
+// ════════════════════════════════════════════════════
+//  ADMIN (OTP flow unchanged, + paywall editor)
+// ════════════════════════════════════════════════════
+function openAdminModal()  { document.getElementById('adminModal').classList.add('open'); renderAdminModalBody(); }
+function closeAdminModal() { document.getElementById('adminModal').classList.remove('open'); }
+
+function renderAdminModalBody() {
+  const body = document.getElementById('adminModalBody');
+  if (isAdmin) {
+    body.innerHTML = `
+      <div style="text-align:center;padding:10px 0 20px;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+        <div class="admin-badge">ADMIN ACTIVE</div>
+        <p style="color:var(--text-secondary);font-size:0.85rem;margin:16px 0 4px;line-height:1.6;">
+          You are logged in as admin.<br>You can add and delete apps — changes sync to all devices instantly.
+        </p>
+      </div>
+
+      <hr class="admin-section-divider">
+      <div class="admin-subtitle">💛 Support / Paywall Ad</div>
+      <p style="color:var(--text-muted);font-size:0.78rem;line-height:1.6;margin-bottom:14px;">
+        This message pops up for every visitor (including you) the next time they open or refresh the app. Add your M-Pesa number and/or PayPal address so people can copy it and send support directly. Turn it off any time.
+      </p>
+
+      <div class="toggle-row">
+        <span>Show support ad on next launch</span>
+        <label class="switch">
+          <input type="checkbox" id="pwEnabled">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Popup Title</label>
+        <input class="form-input" id="pwTitle" type="text" placeholder="💛 SUPPORT VVYNAS VANE">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Message</label>
+        <textarea class="form-textarea" id="pwMessage" placeholder="Tell users why / how they can support you…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">📱 M-Pesa Number</label>
+        <input class="form-input" id="pwMpesa" type="text" placeholder="e.g. 0712 345 678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">💳 PayPal Address</label>
+        <input class="form-input" id="pwPaypal" type="text" placeholder="e.g. you@example.com">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-primary" id="pwSaveBtn" onclick="savePaywallSettings()">💾 SAVE SUPPORT AD</button>
+        <button class="otp-send-btn" onclick="previewPaywall()" style="flex-shrink:0;">👁 Preview</button>
+      </div>
+
+      <hr class="admin-section-divider">
+      <button class="btn-danger" style="width:100%;" onclick="logoutAdmin()">🔓 Logout Admin</button>
+      `;
+    populatePaywallAdminForm();
+  } else {
+    body.innerHTML = `
+      <p style="color:var(--text-secondary);font-size:0.84rem;margin-bottom:20px;line-height:1.6;">
+        A one-time password will be sent to the admin email. Enter it below to unlock admin controls.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Admin Email</label>
+        <input class="form-input" value="${ADMIN_EMAIL}" readonly style="opacity:0.6;cursor:not-allowed;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">One-Time Password</label>
+        <div class="otp-input-row">
+          <input class="form-input" id="otpInput" type="text" maxlength="6" placeholder="——————" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          <button class="otp-send-btn" id="otpSendBtn" onclick="sendOtp()">📨 Send OTP</button>
+        </div>
+        <div class="otp-info" id="otpInfo">Click "Send OTP" to receive a code at the admin email.</div>
+      </div>
+      <button class="btn-primary" onclick="verifyOtp()" style="margin-top:8px;">🔐 VERIFY & LOGIN</button>`;
+  }
+}
+
+function generateOtp() { return Math.floor(100000 + Math.random() * 900000).toString(); }
+
+async function sendOtp() {
+  if (otpCooldown) return;
+  const btn  = document.getElementById('otpSendBtn');
+  const info = document.getElementById('otpInfo');
+
+  if (EMAILJS_SERVICE_ID === 'YOUR_SERVICE_ID') {
+    pendingOtp = generateOtp();
+    otpExpiry = Date.now() + 5 * 60 * 1000;
+    showToast(`DEV MODE — OTP: ${pendingOtp}`, true);
+    info.textContent = '⚠ Dev mode: OTP shown in toast.';
+    startCooldown(btn, info);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending…';
+  pendingOtp = generateOtp();
+  otpExpiry = Date.now() + 5 * 60 * 1000;
+
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: ADMIN_EMAIL,
+      otp_code: pendingOtp,
+      app_name: 'Vvynas Vane APK Store',
+    });
+    info.textContent = `✅ OTP sent to ${ADMIN_EMAIL}. Valid for 5 minutes.`;
+    showToast('📨 OTP sent!', true);
+    startCooldown(btn, info);
+  } catch (err) {
+    pendingOtp = null;
+    btn.disabled = false;
+    btn.textContent = '📨 Send OTP';
+    info.textContent = '❌ Failed to send email. Check EmailJS config.';
+    showToast('Failed to send OTP email.');
+  }
+}
+
+function startCooldown(btn, info) {
+  otpCooldown = true;
+  let seconds = 60;
+  btn.disabled = true;
+  const interval = setInterval(() => {
+    seconds--;
+    btn.textContent = `⏳ ${seconds}s`;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      btn.disabled = false;
+      btn.textContent = '📨 Resend OTP';
+      otpCooldown = false;
+    }
+  }, 1000);
+}
+
+function verifyOtp() {
+  const entered = (document.getElementById('otpInput').value || '').trim();
+  const info = document.getElementById('otpInfo');
+  if (!pendingOtp) { showToast('Please request an OTP first.'); return; }
+  if (Date.now() > otpExpiry) { pendingOtp = null; showToast('OTP expired.'); info.textContent = '⚠ OTP expired.'; return; }
+  if (entered !== pendingOtp) { showToast('❌ Incorrect OTP.'); info.textContent = '❌ Incorrect code.'; return; }
+  isAdmin = true;
+  pendingOtp = null;
+  updateAdminUI();
+  renderAdminModalBody();
+  showToast('🔐 Admin access granted!', true);
+}
+
+function logoutAdmin() {
+  isAdmin = false;
+  updateAdminUI();
+  closeAdminModal();
+  const delBtn = document.getElementById('detailDeleteBtn');
+  if (delBtn) delBtn.style.display = 'none';
+  showToast('Admin logged out.');
+}
+
+function updateAdminUI() {
+  const dot = document.getElementById('adminDot');
+  if (dot) dot.classList.toggle('online', isAdmin);
+}
+
+// ── CLOSE MODALS ON OVERLAY CLICK ──
+document.getElementById('addModal').addEventListener('click',    function(e){ if(e.target===this) closeAddModal(); });
+document.getElementById('detailModal').addEventListener('click', function(e){ if(e.target===this) closeDetailModal(); });
+document.getElementById('adminModal').addEventListener('click',  function(e){ if(e.target===this) closeAdminModal(); });
+document.getElementById('paywallModal').addEventListener('click', function(e){ if(e.target===this) closePaywallModal(); });
+
+init();
+</script>
+
+</body>
+</html>
