@@ -37,4 +37,8 @@
     <circle cx="32" cy="18" r="2" fill="#facc15" opacity="0.6"/>
     <circle cx="48" cy="18" r="2" fill="#facc15" opacity="0.6"/>
   </g>
+
+  <!-- Notification dot — scales with the icon since this is a vector (responsive at any render size) -->
+  <circle cx="389" cy="87" r="59" fill="#150028"/>
+  <circle cx="389" cy="87" r="51" fill="#ef4444"/>
 </svg>
