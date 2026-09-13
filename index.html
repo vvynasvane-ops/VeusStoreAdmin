@@ -4,7 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vvynas Vane APKs — Admin</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23150028'/%3E%3Ccircle cx='32' cy='32' r='28' fill='%23220040'/%3E%3Cellipse cx='32' cy='36' rx='18' ry='14' fill='%23c084fc'/%3E%3Ccircle cx='25' cy='30' r='5' fill='%23150028'/%3E%3Ccircle cx='39' cy='30' r='5' fill='%23150028'/%3E%3Ccircle cx='26' cy='29' r='2' fill='%23facc15'/%3E%3Ccircle cx='40' cy='29' r='2' fill='%23facc15'/%3E%3Cellipse cx='32' cy='40' rx='6' ry='4' fill='%23150028' opacity='0.4'/%3E%3Ccircle cx='32' cy='40' r='2' fill='%23facc15' opacity='0.8'/%3E%3Cellipse cx='18' cy='22' rx='4' ry='7' fill='%23c084fc' transform='rotate(-20 18 22)'/%3E%3Cellipse cx='46' cy='22' rx='4' ry='7' fill='%23c084fc' transform='rotate(20 46 22)'/%3E%3Cpath d='M26 44 Q32 50 38 44' stroke='%23facc15' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<!-- ── App Icons ── -->
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="apple-touch-icon" sizes="57x57" href="apple-touch-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="apple-touch-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="apple-touch-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="apple-touch-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="apple-touch-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="apple-touch-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167x167.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="msapplication-TileColor" content="#150028">
+<meta name="msapplication-TileImage" content="mstile-144x144.png">
+<meta name="msapplication-config" content="browserconfig.xml">
+<meta name="theme-color" content="#150028">
+
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -120,7 +142,11 @@
   .logo-svg { width: 48px; height: 48px; filter: drop-shadow(0 0 8px rgba(147,51,234,0.7)); }
   .brand-text { display: flex; flex-direction: column; }
   .brand-name { font-family: 'Orbitron', monospace; font-size: 1.1rem; font-weight: 900; color: var(--text-primary); letter-spacing: 1px; line-height: 1; text-shadow: 0 0 10px var(--purple-glow); }
+  .brand-sub-row { display: flex; align-items: center; gap: 8px; }
   .brand-sub { font-family: 'Share Tech Mono', monospace; font-size: 0.65rem; color: var(--yellow); letter-spacing: 3px; text-transform: uppercase; }
+  .brand-version { display: inline-flex; align-items: center; gap: 5px; font-family: 'Share Tech Mono', monospace; font-size: 0.62rem; color: var(--text-muted); letter-spacing: 1px; }
+  .version-dot { width: 6px; height: 6px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.8); animation: dotPulse 1.8s ease-in-out infinite; flex-shrink: 0; }
+  @keyframes dotPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
 
   .nav-center { display: flex; align-items: center; gap: 6px; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: 30px; padding: 6px 16px; flex: 1; max-width: 380px; margin: 0 2rem; }
   .nav-center input { background: none; border: none; outline: none; color: var(--text-primary); font-family: 'Exo 2', sans-serif; font-size: 0.9rem; width: 100%; }
@@ -128,9 +154,19 @@
   .search-icon { color: var(--purple-light); font-size: 1rem; }
 
   .nav-actions { display: flex; align-items: center; gap: 10px; }
-  .nav-btn { background: none; border: 1px solid var(--card-border); color: var(--text-secondary); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; letter-spacing: 1px; transition: all 0.25s; white-space: nowrap; }
+  .nav-btn { position: relative; background: none; border: 1px solid var(--card-border); color: var(--text-secondary); border-radius: 8px; padding: 7px 14px; cursor: pointer; font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; letter-spacing: 1px; transition: all 0.25s; white-space: nowrap; }
   .nav-btn:hover { background: var(--card-bg); color: var(--yellow); border-color: var(--yellow); }
   .nav-btn.active { background: var(--purple-bright); color: white; border-color: var(--purple-bright); }
+
+  /* Notification badge — flags that a new admin build/version is available */
+  .nav-btn-badge {
+    position: absolute; top: -4px; right: -4px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #ef4444; border: 2px solid var(--navbar-bg);
+    box-shadow: 0 0 6px rgba(239,68,68,0.8);
+    animation: dotPulse 1.8s ease-in-out infinite;
+  }
+  .nav-btn-badge.hidden { display: none; }
 
   .hero { position: relative; z-index: 2; padding: 120px 2rem 60px; text-align: center; background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(147,51,234,0.15) 0%, transparent 70%); }
   .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(147,51,234,0.15); border: 1px solid rgba(147,51,234,0.4); border-radius: 20px; padding: 5px 16px; margin-bottom: 20px; font-family: 'Share Tech Mono', monospace; font-size: 0.72rem; color: var(--yellow); letter-spacing: 2px; text-transform: uppercase; }
@@ -355,7 +391,10 @@
     </svg>
     <div class="brand-text">
       <span class="brand-name">VVYNAS VANE</span>
-      <span class="brand-sub">APK Store · Admin</span>
+      <div class="brand-sub-row">
+        <span class="brand-sub">APK Store · Admin</span>
+        <span class="brand-version"><span class="version-dot"></span>v1.1</span>
+      </div>
     </div>
   </a>
 
@@ -366,7 +405,10 @@
 
   <div class="nav-actions">
     <button class="nav-btn" onclick="openAddModal()">＋ Add App</button>
-    <button class="nav-btn" id="adminNavBtn" onclick="openAdminModal()"><span class="admin-status-dot" id="adminDot"></span>Admin</button>
+    <button class="nav-btn" id="adminNavBtn" onclick="openAdminModal()">
+      <span class="admin-status-dot" id="adminDot"></span>Admin
+      <span class="nav-btn-badge" id="adminUpdateBadge" title="New admin build available"></span>
+    </button>
     <button class="nav-btn" onclick="openSettings()">⚙ Theme</button>
   </div>
 </nav>
@@ -599,6 +641,12 @@ const FIREBASE_CONFIG = {
 // ════════════════════════════════════════════════════
 const DEMO_MODE = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
 
+// ── ADMIN BUILD VERSION ──
+// Bump this whenever the admin panel ships a change. When it doesn't match
+// the value the browser last saw, the red badge on the Admin button lights
+// up to flag "something's new here" — it clears once the admin opens the panel.
+const ADMIN_VERSION = 'v1.1';
+
 // ── STATE ──
 let apps = [];          // live-synced from Firebase
 let currentFilter = 'all';
@@ -638,6 +686,7 @@ function init() {
   buildEmojiPicker();
   buildStarfield();
   loadSettings();
+  checkAdminUpdateBadge();
 
   if (typeof emailjs !== 'undefined') {
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
@@ -652,6 +701,22 @@ function init() {
   } else {
     initFirebase();
   }
+}
+
+// ── ADMIN UPDATE BADGE ──
+// Shows a small red dot on the Admin nav button when the shipped
+// ADMIN_VERSION is newer than the one this browser last acknowledged.
+function checkAdminUpdateBadge() {
+  const seen = localStorage.getItem('vvynas_admin_version_seen');
+  const badge = document.getElementById('adminUpdateBadge');
+  if (!badge) return;
+  badge.classList.toggle('hidden', seen === ADMIN_VERSION);
+}
+
+function acknowledgeAdminUpdate() {
+  localStorage.setItem('vvynas_admin_version_seen', ADMIN_VERSION);
+  const badge = document.getElementById('adminUpdateBadge');
+  if (badge) badge.classList.add('hidden');
 }
 
 // ── STARFIELD ──
@@ -1138,7 +1203,7 @@ function previewPaywall() {
 // ════════════════════════════════════════════════════
 //  ADMIN (OTP flow unchanged, + paywall editor)
 // ════════════════════════════════════════════════════
-function openAdminModal()  { document.getElementById('adminModal').classList.add('open'); renderAdminModalBody(); }
+function openAdminModal()  { document.getElementById('adminModal').classList.add('open'); renderAdminModalBody(); acknowledgeAdminUpdate(); }
 function closeAdminModal() { document.getElementById('adminModal').classList.remove('open'); }
 
 function renderAdminModalBody() {
@@ -1150,6 +1215,9 @@ function renderAdminModalBody() {
         <div class="admin-badge">ADMIN ACTIVE</div>
         <p style="color:var(--text-secondary);font-size:0.85rem;margin:16px 0 4px;line-height:1.6;">
           You are logged in as admin.<br>You can add and delete apps — changes sync to all devices instantly.
+        </p>
+        <p style="color:var(--text-muted);font-size:0.7rem;margin-top:10px;font-family:'Share Tech Mono',monospace;letter-spacing:1px;">
+          Admin panel ${ADMIN_VERSION}
         </p>
       </div>
 
