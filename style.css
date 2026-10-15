@@ -687,3 +687,17 @@ input[type="color"] { -webkit-appearance: none; width: 34px; height: 34px; borde
   .legacy-flag { animation: none; }
   .banner-ambient, .card-cover { transition: none; }
 }
+
+/* ── Category show/hide ── */
+.cat-panel{display:grid;grid-template-rows:1fr;margin-top:-12px;transition:grid-template-rows .38s cubic-bezier(.4,0,.2,1),opacity .28s ease,margin-top .38s ease}
+.cat-panel.collapsed{grid-template-rows:0fr;opacity:0;margin-top:0;pointer-events:none}
+.cat-panel-inner{overflow:hidden;min-height:0;padding:4px 4px 0;margin:-4px -4px 0}
+.cat-toggle{display:inline-flex;align-items:center;gap:8px}
+.cat-toggle .ct-chev{font-size:.8em;transition:transform .3s ease}
+.cat-toggle.open .ct-chev{transform:rotate(180deg)}
+.ct-count,.cc{background:rgba(255,255,255,.16);border-radius:10px;padding:0 7px;font-size:.7rem;font-style:normal;font-weight:700}
+.cc{margin-left:6px;opacity:.85}
+.ct-active{color:var(--yellow);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom}
+.filter-btn:hover .ct-active,.filter-btn.active .ct-active{color:#fff}
+.ct-clear{margin-left:2px;padding:0 4px;border-radius:50%;opacity:.8}.ct-clear:hover{opacity:1;background:rgba(255,255,255,.2)}
+@media (prefers-reduced-motion:reduce){.cat-panel,.cat-toggle .ct-chev{transition:none}}

@@ -424,7 +424,8 @@ function appCard(a, i, favs) {
 function rebuildFilters() {
   const cats = ['all', ...new Set(apps.map(a=>a.category).filter(Boolean))];
   const bar = document.getElementById('categoryFilters');
-  bar.innerHTML = cats.map(c=>`<button class="filter-btn${c===currentFilter?' active':''}" data-c="${esc(c)}" onclick="setFilter(this.dataset.c,this)">${c==='all'?'All categories':esc(c)}</button>`).join('');
+  bar.innerHTML = cats.map(c=>`<button class="filter-btn${c===currentFilter?' active':''}" data-c="${esc(c)}" onclick="setFilter(this.dataset.c,this)">${c==='all'?'All categories':esc(c)} <i class="cc">${c==='all'?apps.length:apps.filter(a=>a.category===c).length}</i></button>`).join('');
+  applyCats();
 }
 
 function setFilter(cat, el) {
@@ -1709,6 +1710,29 @@ async function deletePublisherPassword() {
     pubRecord = null; isPublisher = false; updatePubStatus(); showToast('🗑 Publisher password deleted.');
   } catch (e) { console.error(e); showToast('❌ Could not delete password.'); }
 }
+
+// ════════════════════════════════════════════════════
+//  CATEGORY SHOW / HIDE — remembered per device; press "C" to toggle
+// ════════════════════════════════════════════════════
+let catsOpen = null;
+function applyCats() {
+  const p = document.getElementById('catPanel'), b = document.getElementById('catToggle'); if (!p || !b) return;
+  if (catsOpen === null) { const s = lsGet('vvynas_cats_open', null); catsOpen = s === null ? !window.matchMedia('(max-width: 640px)').matches : !!s; }
+  const cats = [...new Set(apps.map(a => a.category).filter(Boolean))];
+  const open = !!(catsOpen && cats.length), act = currentFilter !== 'all' ? currentFilter : '';
+  b.style.display = cats.length ? '' : 'none';
+  p.classList.toggle('collapsed', !open); b.classList.toggle('open', open);
+  b.setAttribute('aria-expanded', String(open)); p.setAttribute('aria-hidden', String(!open));
+  document.getElementById('catToggleLabel').innerHTML = (act && !open)
+    ? `Categories: <b class="ct-active">${esc(act)}</b><span class="ct-clear" role="button" title="Clear filter" onclick="event.stopPropagation();setFilter('all')">✕</span>`
+    : `Categories <span class="ct-count">${cats.length}</span>`;
+}
+function toggleCats() { catsOpen = !(catsOpen === null ? true : catsOpen); lsSet('vvynas_cats_open', catsOpen); applyCats(); }
+document.addEventListener('keydown', e => {
+  if (e.key.toLowerCase() !== 'c' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.querySelector('.modal-overlay.open')) return;
+  toggleCats();
+});
 
 // ── CLOSE MODALS ON OVERLAY CLICK ──
 document.getElementById('addModal').addEventListener('click',    function(e){ if(e.target===this) closeAddModal(); });

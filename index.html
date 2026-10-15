@@ -131,6 +131,7 @@
       <button class="plat-tab" data-p="desktop" onclick="setPlatform('desktop', this)">🖥 Desktop</button>
     </div>
     <div class="toolbar-right">
+      <button class="filter-btn cat-toggle open" id="catToggle" onclick="toggleCats()" aria-expanded="true" aria-controls="catPanel" title="Show / hide categories (press C)" style="display:none"><span class="ct-ico">🗂</span><span id="catToggleLabel">Categories</span><span class="ct-chev">▾</span></button>
       <button class="filter-btn" id="favToggle" onclick="toggleFavFilter()">♥ Favorites</button>
       <select class="form-select sort-select" id="sortSelect" onchange="setSort(this.value)" aria-label="Sort apps">
         <option value="featured">Featured &amp; newest</option>
@@ -140,9 +141,13 @@
       </select>
     </div>
   </div>
-  <div class="toolbar" style="margin-top:-12px;">
-    <div class="toolbar-left" id="categoryFilters">
-      <button class="filter-btn active" onclick="setFilter('all', this)">All categories</button>
+  <div class="cat-panel" id="catPanel">
+    <div class="cat-panel-inner">
+      <div class="toolbar" style="margin-bottom:24px;">
+        <div class="toolbar-left" id="categoryFilters">
+          <button class="filter-btn active" onclick="setFilter('all', this)">All categories</button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="section-title">Featured Applications</div>
