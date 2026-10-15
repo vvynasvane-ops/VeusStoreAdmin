@@ -21,7 +21,10 @@ const DEMO_MODE = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
 // Bump this whenever the admin panel ships a change. When it doesn't match
 // the value the browser last saw, the red badge on the Admin button lights
 // up to flag "something's new here" — it clears once the admin opens the panel.
-const ADMIN_VERSION = 'v2.1';
+const ADMIN_VERSION = 'v2.2';
+
+// Two-tier access: Publisher password (add/edit apps only) · Full admin via OTP (everything else)
+let isPublisher = false, pubRef = null, pubRecord = null, pubFails = 0, pubLockUntil = 0, loginTab = 'pass';
 
 // Set to false if you want anyone to be able to open the Add/Edit form (old behaviour).
 const REQUIRE_ADMIN_FOR_EDIT = true;
@@ -176,6 +179,7 @@ function init() {
     renderApps();
     tryOpenDeepLink();
     loadPaywallDemo();
+    pubRecord = lsGet('vvynas_publisher', null);
   } else {
     initFirebase();
   }
@@ -231,6 +235,8 @@ function initFirebase() {
     fbDb = db;
     dbRef = db.ref('apps');
     settingsRef = db.ref('settings/paywall');
+    pubRef = db.ref('settings/publisher');
+    pubRef.on('value', sn => { pubRecord = sn.val(); updatePubStatus(); }, e => console.warn(e));
 
     showSyncBar('⏳ CONNECTING…', 'syncing', 0);
 
@@ -374,16 +380,16 @@ function appCard(a, i, favs) {
   const badge = badgeOf(a);
   const links = getLinks(a);
   const isFav = favs.has(appKey(a));
-  let btnLabel = '⬇ GET';
-  if (links.length === 1) btnLabel = links[0].os === 'android' ? '⬇ APK' : '⬇ ' + OS_META[links[0].os].short.toUpperCase();
+  let btnLabel = '⬇ DOWNLOAD';
+  if (platformOf(a) !== 'both' && links.length === 1) btnLabel = links[0].os === 'android' ? '⬇ APK' : '⬇ ' + OS_META[links[0].os].short.toUpperCase();
   const shots = a.shotCount ? `<span class="meta-pill">🖼 ${+a.shotCount}</span>` : '';
   return `
   <div class="app-card${a.featured ? ' is-featured' : ''}" style="animation-delay:${i*0.06}s" onclick="openDetail('${k}')">
     <div class="card-banner${a.cover ? ' has-cover' : ''}">
       ${a.cover ? `<img class="card-cover" src="${esc(a.cover)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
       <span class="card-banner-icon">${esc(a.icon)}</span>
-      ${isAdmin ? `<button class="edit-btn" title="Edit app" onclick="event.stopPropagation();cardEdit('${k}')">✎</button>` : ''}
-      ${isAdmin && !a.platform ? '<span class="legacy-flag">SET PLATFORM</span>' : ''}
+      ${canUpload() ? `<button class="edit-btn" title="Edit app" onclick="event.stopPropagation();cardEdit('${k}')">✎</button>` : ''}
+      ${canUpload() && !a.platform ? '<span class="legacy-flag">SET PLATFORM</span>' : ''}
       ${a.featured ? '<span class="featured-ribbon">★ FEATURED</span>' : ''}
       ${badge ? `<span class="new-badge ${badge}">${badge === 'new' ? 'NEW' : 'UPDATED'}</span>` : ''}
       <button class="fav-btn${isFav ? ' on' : ''}" title="Favorite" onclick="event.stopPropagation();toggleFav('${k}')">${isFav ? '♥' : '♡'}</button>
@@ -465,13 +471,21 @@ function tryOpenDeepLink() {
 // ════════════════════════════════════════════════════
 //  ADD / EDIT APP
 // ════════════════════════════════════════════════════
-function requireAdmin() {
-  if (REQUIRE_ADMIN_FOR_EDIT && !isAdmin) {
-    showToast('🔐 Admin login required.');
+const canUpload = () => isAdmin || isPublisher;
+function requireAdmin() {   // add / edit apps — publisher password OR full admin
+  if (REQUIRE_ADMIN_FOR_EDIT && !canUpload()) {
+    showToast('🔐 Login required — publisher password or OTP.');
     openAdminModal();
     return false;
   }
   return true;
+}
+function requireFullAdmin() {   // everything else — OTP only
+  if (isAdmin) return true;
+  showToast('📨 This needs full admin (OTP).');
+  isPublisher = false; loginTab = 'otp'; updateAdminUI();
+  openAdminModal();
+  return false;
 }
 
 function openAddModal() {
@@ -813,7 +827,7 @@ function openDetail(id) {
   if (a.cover) startAmbient([a.cover]);
   document.getElementById('detailModal').classList.add('open');
   document.getElementById('detailDeleteBtn').style.display = isAdmin ? 'inline-flex' : 'none';
-  document.getElementById('detailEditBtn').style.display = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('detailEditBtn').style.display = canUpload() ? 'inline-flex' : 'none';
   loadShots(a).then(shots => { if (currentAppId === appKey(a)) renderShotStrip(shots); });
 }
 
@@ -1049,7 +1063,7 @@ document.addEventListener('keydown', e => {
 
 // ── Delete ──
 async function deleteCurrentApp() {
-  if (!currentAppId) return;
+  if (!currentAppId || !requireFullAdmin()) return;
   if (!confirm('Delete this app from the store? This affects ALL devices.')) return;
 
   if (DEMO_MODE) {
@@ -1131,7 +1145,7 @@ function platformManagerHtml() {
 }
 
 async function bulkSetPlatform(key, p) {
-  if (!isAdmin) return;
+  if (!requireFullAdmin()) return;
   const a = findApp(key);
   if (!a) return;
   try {
@@ -1148,7 +1162,7 @@ async function bulkSetPlatform(key, p) {
 }
 
 async function bulkSetUnset(p) {
-  if (!isAdmin) return;
+  if (!requireFullAdmin()) return;
   const todo = apps.filter(a => !a.platform);
   if (!todo.length) return;
   try {
@@ -1175,7 +1189,7 @@ function downloadBlob(filename, text, type = 'application/json') {
 }
 
 async function exportBackup() {
-  if (!isAdmin) return;
+  if (!requireFullAdmin()) return;
   showToast('⏳ Preparing backup…', true);
   try {
     let shots = {};
@@ -1197,7 +1211,7 @@ function importBackupPick() { document.getElementById('importFile').click(); }
 async function importBackup(input) {
   const file = input.files[0];
   input.value = '';
-  if (!file || !isAdmin) return;
+  if (!file || !requireFullAdmin()) return;
   try {
     const data = JSON.parse(await file.text());
     if (data.kind !== 'vvynas-store-backup' || !Array.isArray(data.apps)) throw new Error('Not a Vvynas Store backup file.');
@@ -1231,7 +1245,7 @@ async function importBackup(input) {
 function openAdminModal()  { document.getElementById('adminModal').classList.add('open'); renderAdminModalBody(); acknowledgeAdminUpdate(); }
 function closeAdminModal() { document.getElementById('adminModal').classList.remove('open'); }
 
-function renderAdminModalBody() {
+function renderBaseBody() {
   const body = document.getElementById('adminModalBody');
   if (isAdmin) {
     body.innerHTML = `
@@ -1477,6 +1491,7 @@ function populatePaywallAdminForm() {
 }
 
 async function savePaywallSettings() {
+  if (!requireFullAdmin()) return;
   const updated = {
     enabled: document.getElementById('pwEnabled').checked,
     title: document.getElementById('pwTitle').value.trim() || '💛 SUPPORT VVYNAS VANE',
@@ -1581,7 +1596,7 @@ function verifyOtp() {
 }
 
 function logoutAdmin() {
-  isAdmin = false;
+  isAdmin = false; isPublisher = false;
   updateAdminUI();
   closeAdminModal();
   const delBtn = document.getElementById('detailDeleteBtn');
@@ -1593,10 +1608,107 @@ function logoutAdmin() {
 
 function updateAdminUI() {
   const dot = document.getElementById('adminDot');
-  if (dot) dot.classList.toggle('online', isAdmin);
+  if (dot) dot.classList.toggle('online', canUpload());
   renderApps();
 }
 
+
+// ════════════════════════════════════════════════════
+//  PUBLISHER PASSWORD  (v2.2)
+//  Password → can ADD / EDIT apps. Everything else (delete, analytics,
+//  backup, platforms, support ad, managing the password) stays OTP-only.
+//  Only a salted PBKDF2 hash is stored (settings/publisher), never the password.
+// ════════════════════════════════════════════════════
+async function hashPw(pw, salt) {
+  if (!(window.crypto && crypto.subtle)) throw new Error('Password login needs HTTPS.');
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(salt), iterations: 150000, hash: 'SHA-256' }, key, 256);
+  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function pubStatusText() {
+  return pubRecord ? `✅ Password active · set ${new Date(pubRecord.updated).toLocaleDateString()}` : '⚪ No publisher password — uploads need OTP';
+}
+function updatePubStatus() { const el = document.getElementById('pubStatus'); if (el) el.textContent = pubStatusText(); }
+
+function loginTabsHtml() {
+  return `<div class="seg" style="grid-template-columns:repeat(2,1fr);margin-bottom:18px;">
+    <button type="button" class="${loginTab === 'pass' ? 'active' : ''}" onclick="setLoginTab('pass')">🔑 Publisher</button>
+    <button type="button" class="${loginTab === 'otp' ? 'active' : ''}" onclick="setLoginTab('otp')">📨 Full Admin</button></div>`;
+}
+function setLoginTab(t) { loginTab = t; renderAdminModalBody(); }
+
+function renderAdminModalBody() {
+  const body = document.getElementById('adminModalBody');
+  if (isAdmin) {
+    renderBaseBody();
+    const hrs = body.querySelectorAll('hr.admin-section-divider');
+    hrs[hrs.length - 1].insertAdjacentHTML('beforebegin', `
+      <hr class="admin-section-divider">
+      <div class="admin-subtitle">🔑 Publisher Password</div>
+      <p style="color:var(--text-muted);font-size:0.78rem;line-height:1.6;margin-bottom:12px;">Lets you (or a helper) add and edit apps without an OTP. Renew it any time, or delete it to make uploads OTP-only again.</p>
+      <div class="info-row"><span class="info-key">Status</span><span class="info-val" id="pubStatus">${pubStatusText()}</span></div>
+      <div class="form-group"><label class="form-label">New password (min 6 characters)</label><input class="form-input" id="pubNew" type="password" autocomplete="new-password"></div>
+      <div class="form-group"><label class="form-label">Repeat password</label><input class="form-input" id="pubNew2" type="password" autocomplete="new-password"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn-primary" style="flex:1;" onclick="savePublisherPassword()">💾 SET / RENEW</button>
+      <button class="btn-danger" onclick="deletePublisherPassword()">🗑 DELETE</button></div>`);
+    return;
+  }
+  if (isPublisher) {
+    body.innerHTML = `<div style="text-align:center;padding:6px 0 14px;"><div style="font-size:2.3rem;margin-bottom:10px;">🔑</div><div class="admin-badge">PUBLISHER ACTIVE</div></div>
+      <div class="info-row"><span class="info-key">🔓 Allowed</span><span class="info-val">Add apps · Edit apps</span></div>
+      <div class="info-row"><span class="info-key">🔒 OTP only</span><span class="info-val">Delete · Analytics · Platforms · Backup · Support ad · Password</span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;"><button class="btn-primary" style="flex:1;" onclick="closeAdminModal();openAddModal()">＋ ADD APP</button>
+      <button class="otp-send-btn" onclick="requireFullAdmin()">📨 Unlock full admin</button></div>
+      <hr class="admin-section-divider"><button class="btn-danger" style="width:100%;" onclick="logoutAdmin()">🔓 Logout</button>`;
+    return;
+  }
+  if (loginTab === 'otp') { renderBaseBody(); body.insertAdjacentHTML('afterbegin', loginTabsHtml()); return; }
+  body.innerHTML = loginTabsHtml() + (pubRecord
+    ? `<p style="color:var(--text-secondary);font-size:0.84rem;margin-bottom:16px;line-height:1.6;">Enter the publisher password to add and edit apps — no OTP needed.</p>
+       <div class="form-group"><label class="form-label">Publisher Password</label><input class="form-input" id="pubPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginPublisher()"><div class="otp-info" id="pubInfo"></div></div>
+       <button class="btn-primary" onclick="loginPublisher()">🔑 UNLOCK UPLOADS</button>`
+    : `<p style="color:var(--text-secondary);font-size:0.84rem;line-height:1.6;">No publisher password is set yet. Log in with the <b>Full Admin</b> tab (OTP) and create one under “Publisher Password”.</p>`);
+}
+
+async function loginPublisher() {
+  const info = document.getElementById('pubInfo');
+  if (Date.now() < pubLockUntil) { info.textContent = `⏳ Too many tries — wait ${Math.ceil((pubLockUntil - Date.now()) / 1000)}s.`; return; }
+  const pw = document.getElementById('pubPass').value;
+  if (!pw || !pubRecord) return;
+  try {
+    if (await hashPw(pw, pubRecord.salt) === pubRecord.hash) {
+      isPublisher = true; pubFails = 0; updateAdminUI(); renderAdminModalBody(); showToast('🔑 Publisher unlocked — you can add & edit apps.', true);
+    } else {
+      if (++pubFails >= 5) { pubLockUntil = Date.now() + 30000; pubFails = 0; }
+      info.textContent = '❌ Wrong password.'; showToast('❌ Wrong password.');
+    }
+  } catch (e) { info.textContent = '❌ ' + e.message; }
+}
+
+async function savePublisherPassword() {
+  if (!requireFullAdmin()) return;
+  const a = document.getElementById('pubNew').value, b = document.getElementById('pubNew2').value;
+  if (a.length < 6) { showToast('Password must be at least 6 characters.'); return; }
+  if (a !== b) { showToast('Passwords do not match.'); return; }
+  try {
+    const salt = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
+    const rec = { salt, hash: await hashPw(a, salt), updated: new Date().toISOString() };
+    if (DEMO_MODE) lsSet('vvynas_publisher', rec); else await pubRef.set(rec);
+    pubRecord = rec; isPublisher = false;
+    ['pubNew', 'pubNew2'].forEach(id => { document.getElementById(id).value = ''; });
+    updatePubStatus(); showToast('🔑 Publisher password saved.', true);
+  } catch (e) { console.error(e); showToast('❌ ' + (e.message || 'Could not save password.')); }
+}
+
+async function deletePublisherPassword() {
+  if (!requireFullAdmin() || !pubRecord) return;
+  if (!confirm('Delete the publisher password? Uploading will need an OTP again.')) return;
+  try {
+    if (DEMO_MODE) localStorage.removeItem('vvynas_publisher'); else await pubRef.remove();
+    pubRecord = null; isPublisher = false; updatePubStatus(); showToast('🗑 Publisher password deleted.');
+  } catch (e) { console.error(e); showToast('❌ Could not delete password.'); }
+}
 
 // ── CLOSE MODALS ON OVERLAY CLICK ──
 document.getElementById('addModal').addEventListener('click',    function(e){ if(e.target===this) closeAddModal(); });
