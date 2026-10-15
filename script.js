@@ -21,7 +21,7 @@ const DEMO_MODE = FIREBASE_CONFIG.apiKey === "YOUR_API_KEY";
 // Bump this whenever the admin panel ships a change. When it doesn't match
 // the value the browser last saw, the red badge on the Admin button lights
 // up to flag "something's new here" — it clears once the admin opens the panel.
-const ADMIN_VERSION = 'v2.0';
+const ADMIN_VERSION = 'v2.1';
 
 // Set to false if you want anyone to be able to open the Add/Edit form (old behaviour).
 const REQUIRE_ADMIN_FOR_EDIT = true;
@@ -164,11 +164,6 @@ function init() {
   checkAdminUpdateBadge();
   readDeepLink();
   window.addEventListener('hashchange', () => { readDeepLink(); tryOpenDeepLink(); });
-
-  // Default the platform tab to the visitor's device (they can still switch)
-  const os = detectOS();
-  if (os === 'android') setPlatform('android', document.querySelector('.plat-tab[data-p="android"]'));
-  else if (os) setPlatform('desktop', document.querySelector('.plat-tab[data-p="desktop"]'));
 
   if (typeof emailjs !== 'undefined') {
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
@@ -348,6 +343,8 @@ function renderApps() {
   const dlEl = document.getElementById('totalDownloads');
   if (dlEl) dlEl.textContent = fmtNum(totalDl);
   rebuildFilters();
+  const pm = document.getElementById('platMgr');
+  if (pm) pm.innerHTML = platformManagerHtml();
 
   // keep an open detail modal live
   if (currentAppId) {
@@ -382,8 +379,11 @@ function appCard(a, i, favs) {
   const shots = a.shotCount ? `<span class="meta-pill">🖼 ${+a.shotCount}</span>` : '';
   return `
   <div class="app-card${a.featured ? ' is-featured' : ''}" style="animation-delay:${i*0.06}s" onclick="openDetail('${k}')">
-    <div class="card-banner">
+    <div class="card-banner${a.cover ? ' has-cover' : ''}">
+      ${a.cover ? `<img class="card-cover" src="${esc(a.cover)}" alt="" loading="lazy" onerror="this.remove()">` : ''}
       <span class="card-banner-icon">${esc(a.icon)}</span>
+      ${isAdmin ? `<button class="edit-btn" title="Edit app" onclick="event.stopPropagation();cardEdit('${k}')">✎</button>` : ''}
+      ${isAdmin && !a.platform ? '<span class="legacy-flag">SET PLATFORM</span>' : ''}
       ${a.featured ? '<span class="featured-ribbon">★ FEATURED</span>' : ''}
       ${badge ? `<span class="new-badge ${badge}">${badge === 'new' ? 'NEW' : 'UPDATED'}</span>` : ''}
       <button class="fav-btn${isFav ? ' on' : ''}" title="Favorite" onclick="event.stopPropagation();toggleFav('${k}')">${isFav ? '♥' : '♡'}</button>
@@ -500,6 +500,7 @@ async function openEditModal() {
   selectedEmoji = a.icon || '📱';
   buildEmojiPicker();
   setFormPlatform(platformOf(a));
+  document.getElementById('legacyNote').style.display = a.platform ? 'none' : 'block';
   formShots = (await loadShots(a)).slice();
   renderFormShots();
   document.getElementById('addModalTitle').textContent = '✎ EDIT APP';
@@ -507,6 +508,9 @@ async function openEditModal() {
   closeDetailModal();
   document.getElementById('addModal').classList.add('open');
 }
+
+function cardEdit(key) { currentAppId = key; openEditModal(); }
+function editFromAdmin(key) { closeAdminModal(); currentAppId = key; openEditModal(); }
 
 function closeAddModal() {
   document.getElementById('addModal').classList.remove('open');
@@ -525,6 +529,7 @@ function clearForm() {
   formShots = [];
   renderFormShots();
   setFormPlatform('android');
+  const ln = document.getElementById('legacyNote'); if (ln) ln.style.display = 'none';
   const btn = document.getElementById('publishBtn');
   btn.disabled = false;
   btn.textContent = editingKey ? '💾 SAVE CHANGES' : '⬆ PUBLISH APP';
@@ -544,14 +549,22 @@ function renderFormShots() {
   if (count) count.textContent = `${formShots.length}/${MAX_SHOTS}`;
   grid.innerHTML = formShots.map((s, i) => `
     <div class="shot-thumb">
-      <img src="${esc(s)}" alt="Screenshot ${i+1}">
-      ${i === 0 ? '<span class="shot-cover">COVER</span>' : ''}
+      <img src="${esc(s)}" alt="Screenshot ${i+1}" onload="this.parentNode.classList.toggle('land', this.naturalWidth > this.naturalHeight)">
+      ${i === 0 ? '<span class="shot-cover">★ COVER</span>' : ''}
       <div class="shot-tools">
+        ${i > 0 ? `<button type="button" title="Make cover" onclick="makeCover(${i})">★</button>` : ''}
         <button type="button" title="Move earlier" onclick="moveShot(${i},-1)" ${i===0?'disabled':''}>◀</button>
         <button type="button" title="Move later" onclick="moveShot(${i},1)" ${i===formShots.length-1?'disabled':''}>▶</button>
         <button type="button" title="Remove" class="del" onclick="removeShot(${i})">✕</button>
       </div>
     </div>`).join('') || '<div class="shot-empty">No previews yet — add screenshots so users can see the app before installing.</div>';
+}
+
+function makeCover(i) {
+  const [s] = formShots.splice(i, 1);
+  formShots.unshift(s);
+  renderFormShots();
+  showToast('★ Cover updated', true);
 }
 
 function moveShot(i, dir) {
@@ -586,8 +599,13 @@ function compressImage(file, maxDim = 1100, quality = 0.72) {
 }
 
 async function handleShotFiles(input) {
-  const files = [...(input.files || [])].filter(f => f.type.startsWith('image/'));
+  const files = [...(input.files || [])];
   input.value = '';
+  await addShotFiles(files);
+}
+
+async function addShotFiles(all) {
+  const files = all.filter(f => f && f.type && f.type.startsWith('image/'));
   if (!files.length) return;
   const room = MAX_SHOTS - formShots.length;
   if (room <= 0) { showToast(`Maximum ${MAX_SHOTS} screenshots.`); return; }
@@ -595,10 +613,26 @@ async function handleShotFiles(input) {
   showToast('⏳ Processing images…', true);
   for (const f of files.slice(0, room)) {
     try { formShots.push(await compressImage(f)); }
-    catch (e) { console.error(e); showToast('Could not read ' + f.name); }
+    catch (e) { console.error(e); showToast('Could not read ' + (f.name || 'image')); }
   }
   renderFormShots();
 }
+
+// Drag & drop + clipboard paste (Ctrl/Cmd+V) straight into the form
+(function initShotDrop() {
+  const z = document.getElementById('dropZone');
+  if (z) {
+    ['dragenter', 'dragover'].forEach(ev => z.addEventListener(ev, e => { e.preventDefault(); z.classList.add('drag'); }));
+    ['dragleave', 'drop'].forEach(ev => z.addEventListener(ev, e => { e.preventDefault(); z.classList.remove('drag'); }));
+    z.addEventListener('drop', e => addShotFiles([...(e.dataTransfer ? e.dataTransfer.files : [])]));
+  }
+  document.addEventListener('paste', e => {
+    if (!document.getElementById('addModal').classList.contains('open')) return;
+    const items = [...((e.clipboardData && e.clipboardData.items) || [])];
+    const files = items.filter(i => i.kind === 'file' && i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean);
+    if (files.length) { e.preventDefault(); addShotFiles(files); }
+  });
+})();
 
 function addShotUrl() {
   const el = document.getElementById('shotUrl');
@@ -608,6 +642,26 @@ function addShotUrl() {
   formShots.push(u);
   el.value = '';
   renderFormShots();
+}
+
+// Small cover thumbnail stored on the app itself, so cards can show it without loading every screenshot
+function makeCoverThumb(src) {
+  return new Promise(resolve => {
+    if (!src) return resolve('');
+    if (!/^data:/i.test(src)) return resolve(src);
+    const img = new Image();
+    setTimeout(() => resolve(''), 5000);   // never block saving on a stuck decode
+    img.onerror = () => resolve('');
+    img.onload = () => {
+      const sc = Math.min(1, 520 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * sc));
+      c.height = Math.max(1, Math.round(img.height * sc));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.62));
+    };
+    img.src = src;
+  });
 }
 
 // ── Screenshot storage (kept in its own node so the app list stays light) ──
@@ -681,6 +735,7 @@ async function saveApp() {
   const resetBtn = () => { btn.disabled = false; btn.textContent = editingKey ? '💾 SAVE CHANGES' : '⬆ PUBLISH APP'; };
 
   try {
+    data.cover = await makeCoverThumb(formShots[0]);
     if (editingKey) {
       const existing = findApp(editingKey);
       if (!existing) throw new Error('App no longer exists.');
@@ -726,6 +781,26 @@ async function saveApp() {
 // ════════════════════════════════════════════════════
 //  DETAIL MODAL
 // ════════════════════════════════════════════════════
+let ambTimer = null, ambFlip = false, ambIdx = 0;
+function setAmbient(src) {
+  const on = document.getElementById(ambFlip ? 'ambB' : 'ambA');
+  const off = document.getElementById(ambFlip ? 'ambA' : 'ambB');
+  if (!on || !off) return;
+  on.style.backgroundImage = 'url("' + String(src).replace(/"/g, '%22') + '")';
+  on.classList.add('on'); off.classList.remove('on');
+  ambFlip = !ambFlip;
+}
+function stopAmbient() {
+  clearInterval(ambTimer); ambTimer = null;
+  ['ambA', 'ambB'].forEach(id => { const e = document.getElementById(id); if (e) { e.classList.remove('on'); e.style.backgroundImage = ''; } });
+}
+function startAmbient(imgs) {
+  stopAmbient();
+  if (!imgs.length) return;
+  ambIdx = 0; setAmbient(imgs[0]);
+  if (imgs.length > 1) ambTimer = setInterval(() => { ambIdx = (ambIdx + 1) % imgs.length; setAmbient(imgs[ambIdx]); }, 4000);
+}
+
 function openDetail(id) {
   const a = findApp(id);
   if (!a) return;
@@ -734,6 +809,8 @@ function openDetail(id) {
   document.getElementById('shotsSection').style.display = 'none';
   document.getElementById('shotStrip').innerHTML = '';
   fillDetail(a);
+  stopAmbient();
+  if (a.cover) startAmbient([a.cover]);
   document.getElementById('detailModal').classList.add('open');
   document.getElementById('detailDeleteBtn').style.display = isAdmin ? 'inline-flex' : 'none';
   document.getElementById('detailEditBtn').style.display = isAdmin ? 'inline-flex' : 'none';
@@ -751,8 +828,10 @@ function renderShotStrip(shots) {
   currentShots = shots;
   const sec = document.getElementById('shotsSection');
   sec.style.display = shots.length ? 'block' : 'none';
+  // device frames: tall images get a phone bezel, wide ones a desktop window
   document.getElementById('shotStrip').innerHTML = shots.map((s, i) =>
-    `<button type="button" class="shot-item" onclick="openLightbox(${i})"><img src="${esc(s)}" alt="Preview ${i+1}" loading="lazy"></button>`).join('');
+    `<button type="button" class="shot-item port" onclick="openLightbox(${i})"><img src="${esc(s)}" alt="Preview ${i+1}" loading="lazy" onload="var w=this.naturalWidth>this.naturalHeight;this.parentNode.classList.toggle('land',w);this.parentNode.classList.toggle('port',!w)"></button>`).join('');
+  startAmbient(shots);
 }
 
 function fillDetail(a) {
@@ -794,6 +873,7 @@ function fillDetail(a) {
 }
 
 function closeDetailModal() {
+  stopAmbient();
   document.getElementById('detailModal').classList.remove('open');
   currentAppId = null;
 }
@@ -921,16 +1001,26 @@ function shareCurrent() {
 function openLightbox(i) {
   if (!currentShots.length) return;
   lightboxIndex = i;
+  document.getElementById('lbFilm').innerHTML = currentShots.map((src, n) =>
+    `<button type="button" class="lb-thumb" onclick="lightboxGo(${n})"><img src="${esc(src)}" alt=""></button>`).join('');
   updateLightbox();
   document.getElementById('lightbox').classList.add('open');
 }
 function updateLightbox() {
-  document.getElementById('lightboxImg').src = currentShots[lightboxIndex];
+  const src = currentShots[lightboxIndex];
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lbBg').style.backgroundImage = 'url("' + String(src).replace(/"/g, '%22') + '")';
   document.getElementById('lightboxCount').textContent = `${lightboxIndex + 1} / ${currentShots.length}`;
   const multi = currentShots.length > 1;
   document.getElementById('lbPrev').style.display = multi ? 'flex' : 'none';
   document.getElementById('lbNext').style.display = multi ? 'flex' : 'none';
+  document.getElementById('lbFilm').style.display = multi ? 'flex' : 'none';
+  document.querySelectorAll('#lbFilm .lb-thumb').forEach((t, n) => {
+    t.classList.toggle('on', n === lightboxIndex);
+    if (n === lightboxIndex && t.scrollIntoView) t.scrollIntoView({ block: 'nearest', inline: 'center' });
+  });
 }
+function lightboxGo(n) { lightboxIndex = n; updateLightbox(); }
 function lightboxStep(d) {
   if (!currentShots.length) return;
   lightboxIndex = (lightboxIndex + d + currentShots.length) % currentShots.length;
@@ -1025,6 +1115,56 @@ function analyticsHtml() {
       : '<div class="dl-empty">No downloads recorded yet.</div>'}`;
 }
 
+function platformManagerHtml() {
+  if (!apps.length) return '<div class="dl-empty">No apps yet.</div>';
+  const unset = apps.filter(a => !a.platform).length;
+  const icons = { android: '📱', desktop: '🖥', both: '🔀' };
+  return (unset ? `<div class="pm-banner">⚠ ${unset} app${unset > 1 ? 's were' : ' was'} added before desktop support and ${unset > 1 ? 'have' : 'has'} no platform yet. <button class="mini-btn" onclick="bulkSetUnset('android')">Mark all Android</button></div>` : '') +
+    apps.map(a => {
+      const k = esc(appKey(a));
+      return `<div class="pm-row${a.platform ? '' : ' unset'}">
+        <div class="pm-name">${esc(a.icon)} ${esc(a.name)}${a.platform ? '' : ' <em>not set</em>'}</div>
+        <div class="seg seg-sm">${['android', 'desktop', 'both'].map(x => `<button type="button" title="${x}" class="${a.platform === x ? 'active' : ''}" onclick="bulkSetPlatform('${k}','${x}')">${icons[x]}</button>`).join('')}</div>
+        <button class="mini-btn" title="Edit app" onclick="editFromAdmin('${k}')">✎</button>
+      </div>`;
+    }).join('');
+}
+
+async function bulkSetPlatform(key, p) {
+  if (!isAdmin) return;
+  const a = findApp(key);
+  if (!a) return;
+  try {
+    if (DEMO_MODE) {
+      a.platform = p;
+      localStorage.setItem('vvynas_apps', JSON.stringify(apps));
+      renderApps();
+    } else {
+      await dbRef.child(key).update({ platform: p });
+    }
+    const noDesk = p !== 'android' && !Object.keys(a.desktopUrls || {}).length;
+    showToast(noDesk ? '🖥 Saved — tap ✎ to add the desktop download links' : '✅ Platform saved', true);
+  } catch (e) { console.error(e); showToast('❌ Could not save platform.'); }
+}
+
+async function bulkSetUnset(p) {
+  if (!isAdmin) return;
+  const todo = apps.filter(a => !a.platform);
+  if (!todo.length) return;
+  try {
+    if (DEMO_MODE) {
+      todo.forEach(a => { a.platform = p; });
+      localStorage.setItem('vvynas_apps', JSON.stringify(apps));
+      renderApps();
+    } else {
+      const upd = {};
+      todo.forEach(a => { upd[appKey(a) + '/platform'] = p; });
+      await dbRef.update(upd);
+    }
+    showToast(`✅ ${todo.length} app(s) marked ${p}`, true);
+  } catch (e) { console.error(e); showToast('❌ Could not save platforms.'); }
+}
+
 function downloadBlob(filename, text, type = 'application/json') {
   const blob = new Blob([text], { type });
   const url = URL.createObjectURL(blob);
@@ -1112,6 +1252,13 @@ function renderAdminModalBody() {
       <hr class="admin-section-divider">
       <div class="admin-subtitle">📊 Store Analytics</div>
       ${analyticsHtml()}
+
+      <hr class="admin-section-divider">
+      <div class="admin-subtitle">🧭 App Platforms</div>
+      <p style="color:var(--text-muted);font-size:0.78rem;line-height:1.6;margin-bottom:12px;">
+        Set whether each existing app is Android, Desktop or both. Use ✎ to add desktop download links and preview photos.
+      </p>
+      <div id="platMgr">${platformManagerHtml()}</div>
 
       <hr class="admin-section-divider">
       <div class="admin-subtitle">💾 Backup &amp; Restore</div>
@@ -1447,6 +1594,7 @@ function logoutAdmin() {
 function updateAdminUI() {
   const dot = document.getElementById('adminDot');
   if (dot) dot.classList.toggle('online', isAdmin);
+  renderApps();
 }
 
 

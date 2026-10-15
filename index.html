@@ -75,7 +75,7 @@
       <span class="brand-name">VVYNAS VANE</span>
       <div class="brand-sub-row">
         <span class="brand-sub">App Store · Admin</span>
-        <span class="brand-version"><span class="version-dot"></span>v2.0</span>
+        <span class="brand-version"><span class="version-dot"></span>v2.1</span>
       </div>
     </div>
   </a>
@@ -96,7 +96,7 @@
       </button>
       <button class="nav-btn" onclick="openSettings()">⚙ Theme</button>
     </div>
-    <div class="nav-menu-foot"><span class="version-dot"></span><span>VVYNAS VANE · ADMIN <b id="menuVersion">v2.0</b></span></div>
+    <div class="nav-menu-foot"><span class="version-dot"></span><span>VVYNAS VANE · ADMIN <b id="menuVersion">v2.1</b></span></div>
   </div>
 
   <!-- Orbit burger: only visible on small screens -->
@@ -167,6 +167,7 @@
       <button class="modal-close" onclick="closeAddModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div class="legacy-note" id="legacyNote" style="display:none;">⚠ This app was added before desktop support. Choose its platform below — Android, Desktop or Both — then save.</div>
       <div class="form-group">
         <label class="form-label">Platform</label>
         <div class="seg" id="platformSeg">
@@ -231,15 +232,17 @@
       <div class="form-group">
         <label class="form-label">🖼 Preview Screenshots <span class="shot-counter" id="shotCount">0/8</span></label>
         <div class="shot-grid" id="shotGrid"></div>
-        <div class="shot-actions">
-          <label class="file-upload-btn" for="shotFile">📂 Add Photos</label>
-          <input type="file" id="shotFile" accept="image/*" multiple onchange="handleShotFiles(this)">
+        <div class="dropzone" id="dropZone">
+          <div class="dz-ico">🖼</div>
+          <div class="dz-title">Drop screenshots here</div>
+          <div class="dz-sub">paste with Ctrl+V · or <label for="shotFile" class="dz-link">browse photos</label></div>
         </div>
+        <input type="file" id="shotFile" accept="image/*" multiple onchange="handleShotFiles(this)">
         <div class="inline-row">
           <input class="form-input" id="shotUrl" type="text" placeholder="…or paste an image URL">
           <button type="button" class="otp-send-btn" onclick="addShotUrl()">＋ Add</button>
         </div>
-        <div class="form-hint">Photos are resized automatically. The first image is the cover; use ◀ ▶ to reorder.</div>
+        <div class="form-hint">Photos are resized automatically. The cover (shown on the app card) is the first image — tap ★ on any photo to make it the cover, ◀ ▶ to reorder.</div>
       </div>
 
       <div class="form-group">
@@ -276,6 +279,7 @@
 <div class="modal-overlay" id="detailModal">
   <div class="modal" style="max-width:680px;">
     <div class="detail-banner" id="detailBanner">
+      <div class="banner-ambient" id="ambA"></div><div class="banner-ambient" id="ambB"></div>
       <span id="detailBannerIcon" style="font-size:4rem;z-index:1;"></span>
       <span class="featured-ribbon" id="detailFeatured" style="display:none;">★ FEATURED</span>
     </div>
@@ -335,11 +339,13 @@
 
 <!-- ── SCREENSHOT LIGHTBOX ── -->
 <div class="lightbox" id="lightbox">
+  <div class="lb-bg" id="lbBg"></div>
   <button class="lb-close" onclick="closeLightbox()" aria-label="Close">✕</button>
   <button class="lb-nav prev" id="lbPrev" onclick="lightboxStep(-1)" aria-label="Previous">‹</button>
   <div class="lb-stage" id="lightboxStage"><img id="lightboxImg" alt="Screenshot preview"></div>
   <button class="lb-nav next" id="lbNext" onclick="lightboxStep(1)" aria-label="Next">›</button>
   <div class="lb-count" id="lightboxCount"></div>
+  <div class="lb-film" id="lbFilm"></div>
 </div>
 
 <!-- ── ADMIN LOGIN MODAL ── -->
