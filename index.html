@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vvynas Vane APKs — Admin</title>
+<title>Vvynas Vane App Store — Admin</title>
 
 <!-- ── App Icons ── -->
 <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -74,8 +74,8 @@
     <div class="brand-text">
       <span class="brand-name">VVYNAS VANE</span>
       <div class="brand-sub-row">
-        <span class="brand-sub">APK Store · Admin</span>
-        <span class="brand-version"><span class="version-dot"></span>v1.1</span>
+        <span class="brand-sub">App Store · Admin</span>
+        <span class="brand-version"><span class="version-dot"></span>v2.0</span>
       </div>
     </div>
   </a>
@@ -96,7 +96,7 @@
       </button>
       <button class="nav-btn" onclick="openSettings()">⚙ Theme</button>
     </div>
-    <div class="nav-menu-foot"><span class="version-dot"></span><span>VVYNAS VANE · ADMIN <b id="menuVersion">v1.1</b></span></div>
+    <div class="nav-menu-foot"><span class="version-dot"></span><span>VVYNAS VANE · ADMIN <b id="menuVersion">v2.0</b></span></div>
   </div>
 
   <!-- Orbit burger: only visible on small screens -->
@@ -111,21 +111,38 @@
 
 <!-- ── HERO ── -->
 <section class="hero">
-  <div class="hero-badge">Vvynas Vane · APK Distribution Hub</div>
+  <div class="hero-badge">Vvynas Vane · App Distribution Hub</div>
   <h1 class="hero-title">Your Personal<br><span>App Universe</span></h1>
-  <p class="hero-sub">Curated Android APKs — download, explore, and stay updated with the latest builds.</p>
+  <p class="hero-sub">Curated Android &amp; desktop apps — preview, download, and stay updated with the latest builds.</p>
   <div class="hero-stats">
     <div class="stat"><div class="stat-num" id="totalApps">—</div><div class="stat-label">Apps Listed</div></div>
     <div class="stat"><div class="stat-num" id="totalCats">—</div><div class="stat-label">Categories</div></div>
-    <div class="stat"><div class="stat-num">∞</div><div class="stat-label">Free Downloads</div></div>
+    <div class="stat"><div class="stat-num" id="totalDownloads">0</div><div class="stat-label">Downloads</div></div>
+    <div class="stat"><div class="stat-num">∞</div><div class="stat-label">Free Forever</div></div>
   </div>
 </section>
 
 <!-- ── MAIN ── -->
 <main>
   <div class="toolbar">
+    <div class="plat-tabs" id="platformTabs" role="tablist" aria-label="Platform">
+      <button class="plat-tab active" data-p="all" onclick="setPlatform('all', this)">All</button>
+      <button class="plat-tab" data-p="android" onclick="setPlatform('android', this)">📱 Android</button>
+      <button class="plat-tab" data-p="desktop" onclick="setPlatform('desktop', this)">🖥 Desktop</button>
+    </div>
+    <div class="toolbar-right">
+      <button class="filter-btn" id="favToggle" onclick="toggleFavFilter()">♥ Favorites</button>
+      <select class="form-select sort-select" id="sortSelect" onchange="setSort(this.value)" aria-label="Sort apps">
+        <option value="featured">Featured &amp; newest</option>
+        <option value="downloads">Most downloaded</option>
+        <option value="rating">Top rated</option>
+        <option value="az">A → Z</option>
+      </select>
+    </div>
+  </div>
+  <div class="toolbar" style="margin-top:-12px;">
     <div class="toolbar-left" id="categoryFilters">
-      <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+      <button class="filter-btn active" onclick="setFilter('all', this)">All categories</button>
     </div>
   </div>
   <div class="section-title">Featured Applications</div>
@@ -137,19 +154,27 @@
   </div>
   <div class="empty-state" id="emptyState">
     <div class="empty-icon">🚀</div>
-    <div class="empty-title">No apps yet</div>
-    <div class="empty-sub">Click "＋ Add App" to upload your first APK</div>
+    <div class="empty-title" id="emptyTitle">No apps yet</div>
+    <div class="empty-sub" id="emptySub">Click "＋ Add App" to publish your first Android or desktop app</div>
   </div>
 </main>
 
-<!-- ── ADD APP MODAL ── -->
+<!-- ── ADD / EDIT APP MODAL ── -->
 <div class="modal-overlay" id="addModal">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title">⬆ UPLOAD NEW APP</span>
+      <span class="modal-title" id="addModalTitle">⬆ UPLOAD NEW APP</span>
       <button class="modal-close" onclick="closeAddModal()">✕</button>
     </div>
     <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Platform</label>
+        <div class="seg" id="platformSeg">
+          <button type="button" class="active" data-p="android" onclick="setFormPlatform('android')">📱 Android</button>
+          <button type="button" data-p="desktop" onclick="setFormPlatform('desktop')">🖥 Desktop</button>
+          <button type="button" data-p="both" onclick="setFormPlatform('both')">🔀 Both</button>
+        </div>
+      </div>
       <div class="form-group">
         <label class="form-label">App Name</label>
         <input class="form-input" id="appName" type="text" placeholder="e.g. SuperLauncher Pro">
@@ -182,9 +207,61 @@
         <label class="form-label">Tags (comma-separated)</label>
         <input class="form-input" id="appTags" type="text" placeholder="e.g. productivity, offline, free">
       </div>
-      <div class="form-group">
-        <label class="form-label">Download Link / APK URL</label>
+
+      <div class="form-group" id="grpAndroidUrl">
+        <label class="form-label">📱 Android APK Download Link</label>
         <input class="form-input" id="appUrl" type="text" placeholder="https://…/app.apk">
+      </div>
+      <div id="grpDesktopUrls" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">🖥 Windows Download Link (.exe / .msi / .zip)</label>
+          <input class="form-input" id="urlWindows" type="text" placeholder="https://…/setup.exe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🍎 macOS Download Link (.dmg / .pkg)</label>
+          <input class="form-input" id="urlMacos" type="text" placeholder="https://…/app.dmg">
+        </div>
+        <div class="form-group">
+          <label class="form-label">🐧 Linux Download Link (.AppImage / .deb / .tar.gz)</label>
+          <input class="form-input" id="urlLinux" type="text" placeholder="https://…/app.AppImage">
+        </div>
+        <div class="form-hint">Fill in only the systems you support — buttons appear for those only.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">🖼 Preview Screenshots <span class="shot-counter" id="shotCount">0/8</span></label>
+        <div class="shot-grid" id="shotGrid"></div>
+        <div class="shot-actions">
+          <label class="file-upload-btn" for="shotFile">📂 Add Photos</label>
+          <input type="file" id="shotFile" accept="image/*" multiple onchange="handleShotFiles(this)">
+        </div>
+        <div class="inline-row">
+          <input class="form-input" id="shotUrl" type="text" placeholder="…or paste an image URL">
+          <button type="button" class="otp-send-btn" onclick="addShotUrl()">＋ Add</button>
+        </div>
+        <div class="form-hint">Photos are resized automatically. The first image is the cover; use ◀ ▶ to reorder.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">What's New (changelog)</label>
+        <textarea class="form-textarea" id="appWhatsNew" placeholder="• Fixed crash on startup&#10;• New dark theme"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">System Requirements</label>
+          <input class="form-input" id="appReq" type="text" placeholder="Android 8.0+ · Win 10+">
+        </div>
+        <div class="form-group">
+          <label class="form-label">SHA-256 Checksum</label>
+          <input class="form-input" id="appSha" type="text" placeholder="optional — for verifying downloads">
+        </div>
+      </div>
+      <div class="toggle-row">
+        <span>★ Feature this app (pin to top)</span>
+        <label class="switch">
+          <input type="checkbox" id="appFeatured">
+          <span class="switch-slider"></span>
+        </label>
       </div>
       <div class="form-group">
         <label class="form-label">App Icon (choose emoji)</label>
@@ -197,33 +274,72 @@
 
 <!-- ── APP DETAIL MODAL ── -->
 <div class="modal-overlay" id="detailModal">
-  <div class="modal" style="max-width:620px;">
+  <div class="modal" style="max-width:680px;">
     <div class="detail-banner" id="detailBanner">
       <span id="detailBannerIcon" style="font-size:4rem;z-index:1;"></span>
+      <span class="featured-ribbon" id="detailFeatured" style="display:none;">★ FEATURED</span>
     </div>
     <div class="detail-info">
       <div class="detail-icon" id="detailIcon"></div>
       <div>
         <div class="detail-name" id="detailName"></div>
         <div class="detail-dev" id="detailDev"></div>
+        <div class="plat-row" id="detailPlats"></div>
       </div>
     </div>
     <div class="detail-stats">
       <div class="detail-stat"><div class="detail-stat-val" id="detailVersion"></div><div class="detail-stat-key">Version</div></div>
       <div class="detail-stat"><div class="detail-stat-val" id="detailSize"></div><div class="detail-stat-key">Size</div></div>
       <div class="detail-stat"><div class="detail-stat-val" id="detailCat"></div><div class="detail-stat-key">Category</div></div>
+      <div class="detail-stat"><div class="detail-stat-val" id="detailDl"></div><div class="detail-stat-key">Downloads</div></div>
+      <div class="detail-stat"><div class="detail-stat-val" id="detailRatingStat"></div><div class="detail-stat-key">Rating</div></div>
     </div>
     <div class="modal-body">
-      <div class="section-title" style="font-size:0.75rem;">About</div>
-      <p id="detailDesc" style="color:var(--text-secondary);font-size:0.88rem;line-height:1.7;margin-bottom:18px;"></p>
+      <div id="shotsSection" style="display:none;margin-bottom:18px;">
+        <div class="section-title sm">Preview</div>
+        <div class="shot-strip" id="shotStrip"></div>
+      </div>
+
+      <div class="section-title sm">About</div>
+      <p id="detailDesc" style="color:var(--text-secondary);font-size:0.88rem;line-height:1.7;margin-bottom:18px;white-space:pre-line;"></p>
+
+      <div id="whatsNewBox" style="display:none;margin-bottom:18px;">
+        <div class="section-title sm">What's New</div>
+        <div class="whatsnew" id="detailWhatsNew"></div>
+      </div>
+
+      <div id="reqBox" style="display:none;margin-bottom:18px;">
+        <div class="section-title sm">Details</div>
+        <div id="detailReq"></div>
+        <div id="detailSha"></div>
+      </div>
+
       <div class="app-tags" id="detailTags"></div>
-      <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
-        <button class="btn-primary" id="detailDownloadBtn" onclick="doDownload()" style="width:auto;flex:1;">⬇ DOWNLOAD APK</button>
+
+      <div class="section-title sm" style="margin-top:20px;">Rate this app</div>
+      <div class="rate-row" id="rateRow"></div>
+
+      <div class="section-title sm" style="margin-top:20px;">Download</div>
+      <div class="dl-list" id="detailDownloads"></div>
+
+      <div class="detail-actions">
+        <button class="act-btn" id="detailFavBtn" onclick="toggleFav(currentAppId)">♡ Save</button>
+        <button class="act-btn" onclick="shareCurrent()">🔗 Share</button>
+        <button class="act-btn" id="detailEditBtn" onclick="openEditModal()" style="display:none;">✎ Edit</button>
         <button class="btn-danger" id="detailDeleteBtn" onclick="deleteCurrentApp()" style="display:none;">🗑 DELETE</button>
-        <button class="modal-close" onclick="closeDetailModal()" style="width:auto;padding:10px 16px;background:var(--input-bg);border-radius:10px;">✕</button>
+        <button class="modal-close" onclick="closeDetailModal()" style="width:auto;padding:10px 16px;background:var(--input-bg);border-radius:10px;margin-left:auto;">✕</button>
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── SCREENSHOT LIGHTBOX ── -->
+<div class="lightbox" id="lightbox">
+  <button class="lb-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+  <button class="lb-nav prev" id="lbPrev" onclick="lightboxStep(-1)" aria-label="Previous">‹</button>
+  <div class="lb-stage" id="lightboxStage"><img id="lightboxImg" alt="Screenshot preview"></div>
+  <button class="lb-nav next" id="lbNext" onclick="lightboxStep(1)" aria-label="Next">›</button>
+  <div class="lb-count" id="lightboxCount"></div>
 </div>
 
 <!-- ── ADMIN LOGIN MODAL ── -->
